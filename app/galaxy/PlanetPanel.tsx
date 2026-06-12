@@ -5,6 +5,8 @@ import gsap from "gsap";
 
 import type { CelestialBody } from "./data";
 
+type Shown = { body: CelestialBody; systemName: string };
+
 /**
  * Right-hand toolbar for a single celestial body. Shares the slide-in slot
  * with <SystemPanel>; only one of the two is ever `open` at a time.
@@ -21,18 +23,23 @@ export default function PlanetPanel({
   onBack: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
-  // Keep the last body rendered while the panel slides out.
-  const [shown, setShown] = useState<{
-    body: CelestialBody;
-    systemName: string;
-  } | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const swapRef = useRef<gsap.core.Timeline | null>(null);
+  // Tracks the previous render's `open` so we can tell "switching planets while
+  // open" (animate) apart from "opening the panel" (the slide-in is enough).
+  const wasOpenRef = useRef(open);
 
-  if (body && shown?.body !== body) setShown({ body, systemName });
+  // Keep the last body rendered while the panel slides out.
+  const [shown, setShown] = useState<Shown | null>(null);
+
+  // Populate immediately on first open so the slide-in is never empty.
+  if (body && shown === null) setShown({ body, systemName });
 
   useLayoutEffect(() => {
     if (panelRef.current) gsap.set(panelRef.current, { xPercent: 100 });
   }, []);
 
+  // Panel slide (open / close).
   useEffect(() => {
     if (!panelRef.current) return;
     gsap.to(panelRef.current, {
@@ -40,7 +47,34 @@ export default function PlanetPanel({
       duration: 0.6,
       ease: "power3.out",
     });
-  }, [open, shown]);
+  }, [open]);
+
+  // Cross-fade the inner content when switching to a different body.
+  useEffect(() => {
+    const wasOpen = wasOpenRef.current;
+    wasOpenRef.current = open;
+
+    if (!body || shown === null || shown.body === body) return;
+
+    const el = contentRef.current;
+    // Only animate when switching planets on an already-open panel; otherwise
+    // the panel's own slide-in carries the transition.
+    if (!el || !open || !wasOpen) {
+      setShown({ body, systemName });
+      return;
+    }
+
+    swapRef.current?.kill();
+    swapRef.current = gsap
+      .timeline()
+      .to(el, { opacity: 0, x: 20, duration: 0.16, ease: "power2.in" })
+      .add(() => setShown({ body, systemName }))
+      .fromTo(
+        el,
+        { opacity: 0, x: 20 },
+        { opacity: 1, x: 0, duration: 0.32, ease: "power3.out" }
+      );
+  }, [body, systemName, open, shown]);
 
   return (
     <aside
@@ -48,7 +82,10 @@ export default function PlanetPanel({
       className="fixed right-0 top-0 z-30 h-full w-[340px] overflow-y-auto border-l border-[#c9a84c]/50 bg-[rgba(7,5,26,0.94)] backdrop-blur-md"
     >
       {shown && (
-        <div className="flex min-h-full flex-col gap-5 px-6 pb-8 pt-20">
+        <div
+          ref={contentRef}
+          className="flex min-h-full flex-col gap-5 px-6 pb-8 pt-20"
+        >
           <button
             onClick={onBack}
             className="self-start font-display text-xs font-bold tracking-[0.25em] text-[#c9a84c] transition-colors hover:text-[#f0d080]"
