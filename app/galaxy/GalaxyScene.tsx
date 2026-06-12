@@ -14,7 +14,14 @@ import {
   systemById,
   type StarSystemData,
 } from "./data";
-import { makeRadialTexture, makeRingTexture } from "./textures";
+import {
+  hashSeed,
+  makeCloudTexture,
+  makePlanetTexture,
+  makeRadialTexture,
+  makeRingTexture,
+  type PlanetStyle,
+} from "./textures";
 import { useCameraFly } from "./useCameraFly";
 
 const IDLE_RESUME_MS = 5000;
@@ -39,27 +46,29 @@ function mulberry32(seed: number) {
 }
 
 function StarfieldExtra() {
-  // Three layers of points for size/brightness variety on top of <Stars>.
+  // Three layers of points for brightness variety on top of <Stars>. They live
+  // on a far shell (well beyond the max zoom-out distance) and use a constant
+  // pixel size, so they never resolve into chunky foreground blobs.
   const layers = useMemo(() => {
     const rand = mulberry32(0x7e11b04e);
-    const make = (count: number, radius: number) => {
+    const make = (count: number, rMin: number, rMax: number) => {
       const positions = new Float32Array(count * 3);
       for (let i = 0; i < count; i++) {
         const v = new THREE.Vector3(
-          (rand() - 0.5) * 2,
-          (rand() - 0.5) * 2,
-          (rand() - 0.5) * 2
+          rand() - 0.5,
+          rand() - 0.5,
+          rand() - 0.5
         )
           .normalize()
-          .multiplyScalar(radius * (0.5 + rand() * 0.5));
+          .multiplyScalar(rMin + rand() * (rMax - rMin));
         positions.set([v.x, v.y, v.z], i * 3);
       }
       return positions;
     };
     return [
-      { positions: make(1400, 170), size: 0.32, opacity: 0.35, color: "#aab4ff" },
-      { positions: make(700, 150), size: 0.55, opacity: 0.55, color: "#ffffff" },
-      { positions: make(220, 130), size: 0.95, opacity: 0.85, color: "#fff3d6" },
+      { positions: make(1600, 200, 420), size: 1.1, opacity: 0.5, color: "#aab4ff" },
+      { positions: make(800, 200, 360), size: 1.7, opacity: 0.7, color: "#ffffff" },
+      { positions: make(260, 200, 320), size: 2.6, opacity: 0.95, color: "#fff3d6" },
     ];
   }, []);
 
@@ -78,8 +87,9 @@ function StarfieldExtra() {
             color={layer.color}
             transparent
             opacity={layer.opacity}
-            sizeAttenuation
+            sizeAttenuation={false}
             depthWrite={false}
+            fog={false}
           />
         </points>
       ))}
@@ -167,6 +177,213 @@ function JumpLane({ from, to }: { from: StarSystemData; to: StarSystemData }) {
 /* Star systems                                                        */
 /* ------------------------------------------------------------------ */
 
+const PLANET_STYLES: PlanetStyle[] = [
+  "terran",
+  "rocky",
+  "gas",
+  "ice",
+  "rocky",
+  "gas",
+  "terran",
+];
+
+interface PlanetConfig {
+  body: StarSystemData["bodies"][number];
+  style: PlanetStyle;
+  map: THREE.CanvasTexture;
+  clouds: THREE.CanvasTexture | null;
+  atmosphere: string;
+  size: number;
+  radius: number;
+  speed: number;
+  phase: number;
+  bob: number;
+  spin: number;
+  axialTilt: number;
+  ring: boolean;
+}
+
+function buildPlanets(system: StarSystemData): PlanetConfig[] {
+  return system.bodies.slice(0, 7).map((body, i) => {
+    const style = PLANET_STYLES[i % PLANET_STYLES.length];
+    const seed = hashSeed(system.id + ":" + body.name);
+    const rand = (n: number) => ((seed >>> (n * 3)) % 1000) / 1000;
+    const atmosphere = new THREE.Color(body.color)
+      .lerp(new THREE.Color("#ffffff"), 0.5)
+      .getStyle();
+    return {
+      body,
+      style,
+      map: makePlanetTexture(body.color, seed, style),
+      clouds: style === "terran" ? makeCloudTexture(seed + 17) : null,
+      atmosphere,
+      size: 0.24 + (i % 3) * 0.07,
+      radius: system.size * 2.1 + 1.4 + i * 1.3,
+      speed: 0.4 / (1 + i * 0.32),
+      phase: i * 1.7,
+      bob: (i % 2 === 0 ? 1 : -1) * 0.12 * i,
+      spin: 0.12 + rand(1) * 0.25,
+      axialTilt: (rand(2) - 0.5) * 0.7,
+      ring: style === "gas" && rand(3) > 0.45,
+    };
+  });
+}
+
+function Planet({
+  cfg,
+  systemId,
+  selected,
+  onSelectPlanet,
+}: {
+  cfg: PlanetConfig;
+  systemId: string;
+  selected: boolean;
+  onSelectPlanet: (systemId: string, bodyName: string) => void;
+}) {
+  const posRef = useRef<THREE.Group>(null);
+  const spinRef = useRef<THREE.Group>(null);
+  const scaleRef = useRef<THREE.Group>(null);
+  const [hovered, setHovered] = useState(false);
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    const a = t * cfg.speed + cfg.phase;
+    posRef.current?.position.set(
+      Math.cos(a) * cfg.radius,
+      Math.sin(a * 0.7) * cfg.bob,
+      Math.sin(a) * cfg.radius
+    );
+    if (spinRef.current) spinRef.current.rotation.y = t * cfg.spin + cfg.phase;
+  });
+
+  useEffect(() => {
+    if (!scaleRef.current) return;
+    const s = hovered || selected ? 1.28 : 1;
+    gsap.to(scaleRef.current.scale, { x: s, y: s, z: s, duration: 0.2 });
+  }, [hovered, selected]);
+
+  useEffect(() => {
+    if (!hovered) return;
+    document.body.style.cursor = "pointer";
+    return () => {
+      document.body.style.cursor = "auto";
+    };
+  }, [hovered]);
+
+  return (
+    <group ref={posRef}>
+      <group ref={scaleRef} rotation={[0, 0, cfg.axialTilt]}>
+        <group ref={spinRef}>
+          <mesh>
+            <sphereGeometry args={[cfg.size, 32, 32]} />
+            <meshStandardMaterial
+              map={cfg.map}
+              emissive={cfg.body.color}
+              emissiveIntensity={0.06}
+              roughness={cfg.style === "gas" ? 0.95 : 0.85}
+              metalness={cfg.style === "ice" ? 0.1 : 0}
+            />
+          </mesh>
+
+          {cfg.clouds && (
+            <mesh scale={1.03}>
+              <sphereGeometry args={[cfg.size, 32, 32]} />
+              <meshStandardMaterial
+                map={cfg.clouds}
+                transparent
+                opacity={0.85}
+                depthWrite={false}
+                roughness={1}
+              />
+            </mesh>
+          )}
+        </group>
+
+        {/* atmospheric rim glow (back-side additive shell) */}
+        <mesh scale={1.18}>
+          <sphereGeometry args={[cfg.size, 24, 24]} />
+          <meshBasicMaterial
+            color={cfg.atmosphere}
+            transparent
+            opacity={0.16}
+            side={THREE.BackSide}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
+
+        {cfg.ring && (
+          <group rotation={[Math.PI / 2.05, 0, 0]}>
+            <mesh>
+              <ringGeometry args={[cfg.size * 1.5, cfg.size * 2.35, 56]} />
+              <meshBasicMaterial
+                color={cfg.atmosphere}
+                transparent
+                opacity={0.3}
+                side={THREE.DoubleSide}
+                depthWrite={false}
+              />
+            </mesh>
+            <mesh>
+              <ringGeometry args={[cfg.size * 1.42, cfg.size * 1.5, 56]} />
+              <meshBasicMaterial
+                color={cfg.body.color}
+                transparent
+                opacity={0.4}
+                side={THREE.DoubleSide}
+                depthWrite={false}
+              />
+            </mesh>
+          </group>
+        )}
+      </group>
+
+      {/* generous transparent hit target — planets are small on screen */}
+      <mesh
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelectPlanet(systemId, cfg.body.name);
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          setHovered(true);
+        }}
+        onPointerOut={() => setHovered(false)}
+      >
+        <sphereGeometry args={[Math.max(cfg.size * 2.4, 0.55), 12, 12]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+
+      {selected && (
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[cfg.size * 2.2, cfg.size * 2.55, 48]} />
+          <meshBasicMaterial
+            color="#f0d080"
+            transparent
+            opacity={0.85}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
+
+      {(hovered || selected) && (
+        <Html
+          center
+          position={[0, Math.max(cfg.size, 0.3) + 0.7, 0]}
+          zIndexRange={[20, 0]}
+        >
+          <div className="pointer-events-none select-none whitespace-nowrap rounded border border-[#c9a84c]/40 bg-[#07051a]/90 px-2 py-1 backdrop-blur-sm">
+            <span className="font-display text-[11px] font-bold tracking-[0.18em] text-[#f0d080]">
+              {cfg.body.name.toUpperCase()}
+            </span>
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+}
+
 function OrbitingPlanets({
   system,
   selectedPlanet,
@@ -176,113 +393,30 @@ function OrbitingPlanets({
   selectedPlanet: string | null;
   onSelectPlanet: (systemId: string, bodyName: string) => void;
 }) {
-  const groupRefs = useRef<(THREE.Group | null)[]>([]);
-  const [hovered, setHovered] = useState<string | null>(null);
-  const orbits = useMemo(
-    () =>
-      system.bodies.slice(0, 7).map((body, i) => ({
-        body,
-        radius: system.size * 2.1 + 1.1 + i * 1.15,
-        speed: 0.45 / (1 + i * 0.35),
-        phase: i * 1.7,
-        tilt: (i % 2 === 0 ? 1 : -1) * 0.12 * i,
-        size: 0.16 + (i % 3) * 0.08,
-      })),
-    [system]
+  const planets = useMemo(() => buildPlanets(system), [system]);
+
+  // Free the per-body canvas textures when the focused system changes.
+  useEffect(
+    () => () => {
+      planets.forEach((p) => {
+        p.map.dispose();
+        p.clouds?.dispose();
+      });
+    },
+    [planets]
   );
-
-  useFrame(({ clock }) => {
-    const t = clock.elapsedTime;
-    orbits.forEach((o, i) => {
-      const g = groupRefs.current[i];
-      if (!g) return;
-      const a = t * o.speed + o.phase;
-      g.position.set(
-        Math.cos(a) * o.radius,
-        Math.sin(a * 0.7) * o.tilt,
-        Math.sin(a) * o.radius
-      );
-    });
-  });
-
-  useEffect(() => {
-    document.body.style.cursor = hovered ? "pointer" : "auto";
-    return () => {
-      document.body.style.cursor = "auto";
-    };
-  }, [hovered]);
 
   return (
     <group>
-      {orbits.map((o, i) => {
-        const isSelected = selectedPlanet === o.body.name;
-        const isHovered = hovered === o.body.name;
-        const enter = (e: { stopPropagation: () => void }) => {
-          e.stopPropagation();
-          setHovered(o.body.name);
-        };
-        const leave = () =>
-          setHovered((prev) => (prev === o.body.name ? null : prev));
-        const select = (e: { stopPropagation: () => void }) => {
-          e.stopPropagation();
-          onSelectPlanet(system.id, o.body.name);
-        };
-        return (
-          <group
-            key={o.body.name}
-            ref={(el) => {
-              groupRefs.current[i] = el;
-            }}
-          >
-            <mesh scale={isSelected || isHovered ? 1.5 : 1}>
-              <sphereGeometry args={[o.size, 16, 16]} />
-              <meshStandardMaterial
-                color={o.body.color}
-                emissive={o.body.color}
-                emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.5 : 0.25}
-                roughness={0.7}
-              />
-            </mesh>
-
-            {/* generous transparent hit target — planets are small on screen */}
-            <mesh
-              onClick={select}
-              onPointerOver={enter}
-              onPointerOut={leave}
-            >
-              <sphereGeometry args={[Math.max(o.size * 2.6, 0.55), 12, 12]} />
-              <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-            </mesh>
-
-            {isSelected && (
-              <mesh rotation={[Math.PI / 2, 0, 0]}>
-                <ringGeometry args={[o.size * 1.7, o.size * 2.05, 40]} />
-                <meshBasicMaterial
-                  color="#f0d080"
-                  transparent
-                  opacity={0.85}
-                  side={THREE.DoubleSide}
-                  depthWrite={false}
-                />
-              </mesh>
-            )}
-
-            {(isHovered || isSelected) && (
-              <Html
-                center
-                position={[0, Math.max(o.size, 0.3) + 0.55, 0]}
-                zIndexRange={[20, 0]}
-              >
-                <div className="pointer-events-none select-none whitespace-nowrap rounded border border-[#c9a84c]/40 bg-[#07051a]/90 px-2 py-1 backdrop-blur-sm">
-                  <span className="font-display text-[11px] font-bold tracking-[0.18em] text-[#f0d080]">
-                    {o.body.name.toUpperCase()}
-                  </span>
-                </div>
-              </Html>
-            )}
-          </group>
-        );
-      })}
+      {planets.map((cfg) => (
+        <Planet
+          key={cfg.body.name}
+          cfg={cfg}
+          systemId={system.id}
+          selected={selectedPlanet === cfg.body.name}
+          onSelectPlanet={onSelectPlanet}
+        />
+      ))}
     </group>
   );
 }
@@ -629,13 +763,13 @@ export default function GalaxyScene({
       <ambientLight intensity={0.12} />
 
       <Stars
-        radius={120}
-        depth={60}
+        radius={210}
+        depth={80}
         count={3000}
-        factor={4}
+        factor={3}
         saturation={0}
         fade
-        speed={0.4}
+        speed={0.3}
       />
       <StarfieldExtra />
       <NebulaGlow />

@@ -32,6 +32,14 @@ for (const step of actions.split(";").map((s) => s.trim()).filter(Boolean)) {
   } else if (cmd === "move") {
     const [x, y] = arg.split(",").map(Number);
     await page.mouse.move(x, y);
+  } else if (cmd === "wheel") {
+    // arg = "x,y,deltaY,steps"
+    const [x, y, dy, steps] = arg.split(",").map(Number);
+    await page.mouse.move(x, y);
+    for (let s = 0; s < (steps || 1); s++) {
+      await page.mouse.wheel({ deltaY: dy });
+      await new Promise((r) => setTimeout(r, 60));
+    }
   } else if (cmd === "wait") {
     await new Promise((r) => setTimeout(r, Number(arg)));
   }
