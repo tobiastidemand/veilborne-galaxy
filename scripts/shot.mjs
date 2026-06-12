@@ -3,6 +3,7 @@ import puppeteer from "puppeteer-core";
 const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 const url = process.argv[2] ?? "http://localhost:3000";
 const out = process.argv[3] ?? "scripts/shot.png";
+// actions: comma-separated, e.g. "click:800,430;wait:3500;click:980,360;wait:1200"
 const actions = process.argv[4] ?? "";
 
 const browser = await puppeteer.launch({
@@ -23,18 +24,20 @@ await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 await page.waitForSelector("canvas", { timeout: 30000 });
 await new Promise((r) => setTimeout(r, 4000));
 
-if (actions === "click-center-star") {
-  // click roughly at Solara Prime (screen center)
-  await page.mouse.click(800, 430);
-  await new Promise((r) => setTimeout(r, 3500));
+for (const step of actions.split(";").map((s) => s.trim()).filter(Boolean)) {
+  const [cmd, arg] = step.split(":");
+  if (cmd === "click") {
+    const [x, y] = arg.split(",").map(Number);
+    await page.mouse.click(x, y);
+  } else if (cmd === "move") {
+    const [x, y] = arg.split(",").map(Number);
+    await page.mouse.move(x, y);
+  } else if (cmd === "wait") {
+    await new Promise((r) => setTimeout(r, Number(arg)));
+  }
 }
 
 await page.screenshot({ path: out });
 console.log(`SHOT ${out}`);
-if (errors.length) {
-  console.log("ERRORS:");
-  errors.slice(0, 10).forEach((e) => console.log("  " + e));
-} else {
-  console.log("NO_CONSOLE_ERRORS");
-}
+console.log(errors.length ? "ERRORS:\n  " + errors.slice(0, 10).join("\n  ") : "NO_CONSOLE_ERRORS");
 await browser.close();

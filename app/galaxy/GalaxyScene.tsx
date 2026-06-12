@@ -19,6 +19,10 @@ import { useCameraFly } from "./useCameraFly";
 
 const IDLE_RESUME_MS = 5000;
 
+// Decorative meshes/sprites (coronas, nebula, halos) must never intercept
+// pointer events — otherwise they steal clicks meant for stars and planets.
+const NO_RAYCAST = () => null;
+
 /* ------------------------------------------------------------------ */
 /* Background                                                          */
 /* ------------------------------------------------------------------ */
@@ -110,7 +114,12 @@ function NebulaGlow() {
   return (
     <>
       {plumes.map((p, i) => (
-        <sprite key={i} position={p.position} scale={[p.scale, p.scale, 1]}>
+        <sprite
+          key={i}
+          position={p.position}
+          scale={[p.scale, p.scale, 1]}
+          raycast={NO_RAYCAST}
+        >
           <spriteMaterial
             map={p.map}
             transparent
@@ -158,8 +167,17 @@ function JumpLane({ from, to }: { from: StarSystemData; to: StarSystemData }) {
 /* Star systems                                                        */
 /* ------------------------------------------------------------------ */
 
-function OrbitingPlanets({ system }: { system: StarSystemData }) {
+function OrbitingPlanets({
+  system,
+  selectedPlanet,
+  onSelectPlanet,
+}: {
+  system: StarSystemData;
+  selectedPlanet: string | null;
+  onSelectPlanet: (systemId: string, bodyName: string) => void;
+}) {
   const groupRefs = useRef<(THREE.Group | null)[]>([]);
+  const [hovered, setHovered] = useState<string | null>(null);
   const orbits = useMemo(
     () =>
       system.bodies.slice(0, 7).map((body, i) => ({
@@ -187,26 +205,84 @@ function OrbitingPlanets({ system }: { system: StarSystemData }) {
     });
   });
 
+  useEffect(() => {
+    document.body.style.cursor = hovered ? "pointer" : "auto";
+    return () => {
+      document.body.style.cursor = "auto";
+    };
+  }, [hovered]);
+
   return (
     <group>
-      {orbits.map((o, i) => (
-        <group
-          key={o.body.name}
-          ref={(el) => {
-            groupRefs.current[i] = el;
-          }}
-        >
-          <mesh>
-            <sphereGeometry args={[o.size, 16, 16]} />
-            <meshStandardMaterial
-              color={o.body.color}
-              emissive={o.body.color}
-              emissiveIntensity={0.25}
-              roughness={0.7}
-            />
-          </mesh>
-        </group>
-      ))}
+      {orbits.map((o, i) => {
+        const isSelected = selectedPlanet === o.body.name;
+        const isHovered = hovered === o.body.name;
+        const enter = (e: { stopPropagation: () => void }) => {
+          e.stopPropagation();
+          setHovered(o.body.name);
+        };
+        const leave = () =>
+          setHovered((prev) => (prev === o.body.name ? null : prev));
+        const select = (e: { stopPropagation: () => void }) => {
+          e.stopPropagation();
+          onSelectPlanet(system.id, o.body.name);
+        };
+        return (
+          <group
+            key={o.body.name}
+            ref={(el) => {
+              groupRefs.current[i] = el;
+            }}
+          >
+            <mesh scale={isSelected || isHovered ? 1.5 : 1}>
+              <sphereGeometry args={[o.size, 16, 16]} />
+              <meshStandardMaterial
+                color={o.body.color}
+                emissive={o.body.color}
+                emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.5 : 0.25}
+                roughness={0.7}
+              />
+            </mesh>
+
+            {/* generous transparent hit target — planets are small on screen */}
+            <mesh
+              onClick={select}
+              onPointerOver={enter}
+              onPointerOut={leave}
+            >
+              <sphereGeometry args={[Math.max(o.size * 2.6, 0.55), 12, 12]} />
+              <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+            </mesh>
+
+            {isSelected && (
+              <mesh rotation={[Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[o.size * 1.7, o.size * 2.05, 40]} />
+                <meshBasicMaterial
+                  color="#f0d080"
+                  transparent
+                  opacity={0.85}
+                  side={THREE.DoubleSide}
+                  depthWrite={false}
+                />
+              </mesh>
+            )}
+
+            {(isHovered || isSelected) && (
+              <Html
+                center
+                position={[0, Math.max(o.size, 0.3) + 0.55, 0]}
+                zIndexRange={[20, 0]}
+              >
+                <div className="pointer-events-none select-none whitespace-nowrap rounded border border-[#c9a84c]/40 bg-[#07051a]/90 px-2 py-1 backdrop-blur-sm">
+                  <span className="font-display text-[11px] font-bold tracking-[0.18em] text-[#f0d080]">
+                    {o.body.name.toUpperCase()}
+                  </span>
+                </div>
+              </Html>
+            )}
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -222,7 +298,7 @@ function CoronaSprite({
 }) {
   const map = useMemo(() => makeRadialTexture(color, 1), [color]);
   return (
-    <sprite scale={[scale, scale, 1]}>
+    <sprite scale={[scale, scale, 1]} raycast={NO_RAYCAST}>
       <spriteMaterial
         map={map}
         transparent
@@ -271,7 +347,10 @@ function BlackHoleCore({ system }: { system: StarSystemData }) {
         />
       </mesh>
       {/* lens-distortion style halo instead of a corona */}
-      <sprite scale={[system.size * 6.5, system.size * 6.5, 1]}>
+      <sprite
+        scale={[system.size * 6.5, system.size * 6.5, 1]}
+        raycast={NO_RAYCAST}
+      >
         <spriteMaterial
           map={haloMap}
           transparent
@@ -345,12 +424,16 @@ function BinaryPair({ system }: { system: StarSystemData }) {
 
 function StarSystem({
   system,
-  selected,
-  onSelect,
+  focused,
+  selectedPlanet,
+  onSelectSystem,
+  onSelectPlanet,
 }: {
   system: StarSystemData;
-  selected: boolean;
-  onSelect: (id: string) => void;
+  focused: boolean;
+  selectedPlanet: string | null;
+  onSelectSystem: (id: string) => void;
+  onSelectPlanet: (systemId: string, bodyName: string) => void;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const coreRef = useRef<THREE.Group>(null);
@@ -396,7 +479,7 @@ function StarSystem({
         ref={coreRef}
         onClick={(e) => {
           e.stopPropagation();
-          onSelect(system.id);
+          onSelectSystem(system.id);
         }}
         onPointerOver={(e) => {
           e.stopPropagation();
@@ -427,10 +510,10 @@ function StarSystem({
             />
           </>
         )}
-        {/* generous invisible hit target so small stars are easy to click */}
-        <mesh visible={false}>
+        {/* generous transparent hit target so small stars are easy to click */}
+        <mesh>
           <sphereGeometry args={[Math.max(system.size * 1.4, 1.4), 12, 12]} />
-          <meshBasicMaterial />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       </group>
 
@@ -448,7 +531,7 @@ function StarSystem({
         </Billboard>
       )}
 
-      {hovered && !selected && (
+      {hovered && !focused && (
         <Html
           center
           position={[0, system.size * 1.4 + 2.2, 0]}
@@ -462,7 +545,13 @@ function StarSystem({
         </Html>
       )}
 
-      {selected && <OrbitingPlanets system={system} />}
+      {focused && (
+        <OrbitingPlanets
+          system={system}
+          selectedPlanet={selectedPlanet}
+          onSelectPlanet={onSelectPlanet}
+        />
+      )}
     </group>
   );
 }
@@ -472,34 +561,47 @@ function StarSystem({
 /* ------------------------------------------------------------------ */
 
 export default function GalaxyScene({
-  selectedId,
-  onSelect,
+  focusSystemId,
+  selectedPlanet,
+  flightNonce,
+  onSelectSystem,
+  onSelectPlanet,
   onArrive,
 }: {
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
-  onArrive: () => void;
+  focusSystemId: string | null;
+  selectedPlanet: string | null;
+  flightNonce: number;
+  onSelectSystem: (id: string) => void;
+  onSelectPlanet: (systemId: string, bodyName: string) => void;
+  onArrive: (id: string) => void;
 }) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const lastInteraction = useRef(0);
   const { flyTo, flyHome } = useCameraFly(controlsRef);
-  const prevSelected = useRef<string | null>(null);
+  const firstFlight = useRef(true);
 
+  // Drive the camera off `flightNonce` so re-selecting the same system still
+  // re-flies (and re-opens its panel). `focusSystemId` only ever changes in
+  // lockstep with the nonce, so including it never triggers a stray flight.
   useEffect(() => {
-    if (selectedId) {
-      const system = systemById(selectedId);
-      flyTo(system.position, system.size, onArrive);
-    } else if (prevSelected.current) {
+    if (firstFlight.current) {
+      firstFlight.current = false;
+      return;
+    }
+    if (focusSystemId) {
+      const system = systemById(focusSystemId);
+      flyTo(system.position, system.size, () => onArrive(system.id));
+    } else {
       flyHome();
     }
-    prevSelected.current = selectedId;
-  }, [selectedId, flyTo, flyHome, onArrive]);
+  }, [flightNonce, focusSystemId, flyTo, flyHome, onArrive]);
 
   useFrame((state) => {
     const controls = controlsRef.current;
     if (!controls) return;
     controls.autoRotate =
-      !selectedId && performance.now() - lastInteraction.current > IDLE_RESUME_MS;
+      !focusSystemId &&
+      performance.now() - lastInteraction.current > IDLE_RESUME_MS;
 
     // Widen the field of view on narrow viewports so the galaxy stays framed.
     const persp = state.camera as THREE.PerspectiveCamera;
@@ -546,8 +648,10 @@ export default function GalaxyScene({
         <StarSystem
           key={system.id}
           system={system}
-          selected={selectedId === system.id}
-          onSelect={(id) => onSelect(id)}
+          focused={focusSystemId === system.id}
+          selectedPlanet={selectedPlanet}
+          onSelectSystem={onSelectSystem}
+          onSelectPlanet={onSelectPlanet}
         />
       ))}
 

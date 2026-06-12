@@ -6,8 +6,19 @@ import gsap from "gsap";
 
 import GalaxyScene from "./GalaxyScene";
 import SystemPanel from "./SystemPanel";
+import PlanetPanel from "./PlanetPanel";
 import { SYSTEMS, systemById } from "./data";
 import { HOME_CAMERA } from "./useCameraFly";
+
+/**
+ * Single source of truth for what the chart is showing. Every panel's
+ * open/closed state and the camera focus derive from this one value, which
+ * keeps the toolbars from ever desyncing.
+ */
+type View =
+  | { mode: "galaxy" }
+  | { mode: "system"; systemId: string }
+  | { mode: "planet"; systemId: string; bodyName: string };
 
 const LEGEND_CHAIN = [
   { label: "Administrative HQ", color: "#f0d080", opacity: 1 },
@@ -19,33 +30,73 @@ const LEGEND_CHAIN = [
 ];
 
 export default function GalaxyMap() {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [view, setView] = useState<View>({ mode: "galaxy" });
+  // Bumped on every camera-flight request. Lets re-selecting the same system
+  // re-trigger the flight even though `focusSystemId` is unchanged.
+  const [flightNonce, setFlightNonce] = useState(0);
+  // True once the camera has settled on the focused system.
+  const [systemArrived, setSystemArrived] = useState(false);
+
+  // Mirror of `view` for callbacks that must read the latest value without
+  // being re-created (keeps the GalaxyScene effect deps stable).
+  const viewRef = useRef<View>(view);
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+
   const backRef = useRef<HTMLButtonElement>(null);
 
-  const handleSelect = useCallback((id: string | null) => {
-    setPanelOpen(false);
-    setSelectedId(id);
+  const focusSystemId = view.mode === "galaxy" ? null : view.systemId;
+
+  const selectSystem = useCallback((id: string) => {
+    setSystemArrived(false);
+    setView({ mode: "system", systemId: id });
+    setFlightNonce((n) => n + 1);
   }, []);
 
-  const handleArrive = useCallback(() => setPanelOpen(true), []);
+  const selectPlanet = useCallback((systemId: string, bodyName: string) => {
+    // Camera stays parked on the system; swapping panels is all that happens.
+    setView({ mode: "planet", systemId, bodyName });
+  }, []);
 
-  const handleBack = useCallback(() => {
-    setPanelOpen(false);
-    setSelectedId(null);
+  const goToGalaxy = useCallback(() => {
+    setSystemArrived(false);
+    setView({ mode: "galaxy" });
+    setFlightNonce((n) => n + 1);
+  }, []);
+
+  const backToSystem = useCallback(() => {
+    const v = viewRef.current;
+    if (v.mode === "planet") setView({ mode: "system", systemId: v.systemId });
+  }, []);
+
+  const handleArrive = useCallback((id: string) => {
+    const v = viewRef.current;
+    if (v.mode !== "galaxy" && v.systemId === id) setSystemArrived(true);
   }, []);
 
   useEffect(() => {
-    if (selectedId && backRef.current) {
+    if (focusSystemId && backRef.current) {
       gsap.fromTo(
         backRef.current,
         { opacity: 0, y: 8 },
         { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", delay: 0.4 }
       );
     }
-  }, [selectedId]);
+  }, [focusSystemId]);
 
-  const selected = selectedId ? systemById(selectedId) : null;
+  const panelSystem = focusSystemId ? systemById(focusSystemId) : null;
+  const systemPanelOpen = view.mode === "system" && systemArrived;
+
+  const selectedPlanet = view.mode === "planet" ? view.bodyName : null;
+  const planetBody =
+    view.mode === "planet"
+      ? systemById(view.systemId).bodies.find((b) => b.name === view.bodyName) ??
+        null
+      : null;
+  const planetSystemName =
+    view.mode === "planet" ? systemById(view.systemId).name : "";
+  const planetPanelOpen = view.mode === "planet";
 
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-[#03020a] font-body text-white">
@@ -55,8 +106,11 @@ export default function GalaxyMap() {
         className="absolute inset-0"
       >
         <GalaxyScene
-          selectedId={selectedId}
-          onSelect={handleSelect}
+          focusSystemId={focusSystemId}
+          selectedPlanet={selectedPlanet}
+          flightNonce={flightNonce}
+          onSelectSystem={selectSystem}
+          onSelectPlanet={selectPlanet}
           onArrive={handleArrive}
         />
       </Canvas>
@@ -84,10 +138,10 @@ export default function GalaxyMap() {
       </header>
 
       {/* back to galaxy */}
-      {selectedId && (
+      {focusSystemId && (
         <button
           ref={backRef}
-          onClick={handleBack}
+          onClick={goToGalaxy}
           className="fixed left-6 top-20 z-40 border border-[#c9a84c]/50 bg-[#07051a]/80 px-4 py-2 font-display text-xs font-bold tracking-[0.25em] text-[#c9a84c] backdrop-blur-sm transition-colors hover:border-[#f0d080] hover:text-[#f0d080]"
         >
           ← BACK TO GALAXY
@@ -136,7 +190,17 @@ export default function GalaxyMap() {
         <div>Drag to orbit · Scroll to zoom</div>
       </div>
 
-      <SystemPanel system={selected} open={panelOpen} onBack={handleBack} />
+      <SystemPanel
+        system={panelSystem}
+        open={systemPanelOpen}
+        onBack={goToGalaxy}
+      />
+      <PlanetPanel
+        body={planetBody}
+        systemName={planetSystemName}
+        open={planetPanelOpen}
+        onBack={backToSystem}
+      />
     </div>
   );
 }
