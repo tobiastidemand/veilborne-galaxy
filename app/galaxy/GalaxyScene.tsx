@@ -12,6 +12,7 @@ import {
   JUMP_LANES,
   SYSTEMS,
   systemById,
+  type BodyKind,
   type StarSystemData,
 } from "./data";
 import {
@@ -187,10 +188,12 @@ const PLANET_STYLES: PlanetStyle[] = [
   "terran",
 ];
 
-interface PlanetConfig {
+interface BodyConfig {
   body: StarSystemData["bodies"][number];
+  kind: BodyKind;
+  seed: number;
   style: PlanetStyle;
-  map: THREE.CanvasTexture;
+  map: THREE.CanvasTexture | null;
   clouds: THREE.CanvasTexture | null;
   atmosphere: string;
   size: number;
@@ -203,20 +206,36 @@ interface PlanetConfig {
   ring: boolean;
 }
 
-function buildPlanets(system: StarSystemData): PlanetConfig[] {
+// Rough visual radius (in units of cfg.size) per body kind, for sizing the
+// hit target, selection ring and label.
+const BODY_REACH: Record<BodyKind, number> = {
+  planet: 1.2,
+  station: 2.0,
+  derelict: 1.9,
+  fragment: 1.45,
+  mirror: 1.2,
+  anomaly: 1.35,
+};
+
+function buildBodies(system: StarSystemData): BodyConfig[] {
   return system.bodies.slice(0, 7).map((body, i) => {
+    const kind = body.kind ?? "planet";
     const style = PLANET_STYLES[i % PLANET_STYLES.length];
     const seed = hashSeed(system.id + ":" + body.name);
     const rand = (n: number) => ((seed >>> (n * 3)) % 1000) / 1000;
+    const isPlanet = kind === "planet";
     const atmosphere = new THREE.Color(body.color)
       .lerp(new THREE.Color("#ffffff"), 0.5)
       .getStyle();
     return {
       body,
+      kind,
+      seed,
       style,
-      map: makePlanetTexture(body.color, seed, style),
-      clouds: style === "terran" ? makeCloudTexture(seed + 17) : null,
       atmosphere,
+      map: isPlanet ? makePlanetTexture(body.color, seed, style) : null,
+      clouds:
+        isPlanet && style === "terran" ? makeCloudTexture(seed + 17) : null,
       size: 0.24 + (i % 3) * 0.07,
       radius: system.size * 2.1 + 1.4 + i * 1.3,
       speed: 0.4 / (1 + i * 0.32),
@@ -224,9 +243,319 @@ function buildPlanets(system: StarSystemData): PlanetConfig[] {
       bob: (i % 2 === 0 ? 1 : -1) * 0.12 * i,
       spin: 0.12 + rand(1) * 0.25,
       axialTilt: (rand(2) - 0.5) * 0.7,
-      ring: style === "gas" && rand(3) > 0.45,
+      ring: isPlanet && style === "gas" && rand(3) > 0.45,
     };
   });
+}
+
+/* --- per-kind 3D models ------------------------------------------- */
+
+function PlanetModel({ cfg }: { cfg: BodyConfig }) {
+  return (
+    <group>
+      <mesh>
+        <sphereGeometry args={[cfg.size, 32, 32]} />
+        <meshStandardMaterial
+          map={cfg.map}
+          emissive={cfg.body.color}
+          emissiveIntensity={0.06}
+          roughness={cfg.style === "gas" ? 0.95 : 0.85}
+          metalness={cfg.style === "ice" ? 0.1 : 0}
+        />
+      </mesh>
+
+      {cfg.clouds && (
+        <mesh scale={1.03}>
+          <sphereGeometry args={[cfg.size, 32, 32]} />
+          <meshStandardMaterial
+            map={cfg.clouds}
+            transparent
+            opacity={0.85}
+            depthWrite={false}
+            roughness={1}
+          />
+        </mesh>
+      )}
+
+      {/* atmospheric rim glow (back-side additive shell) */}
+      <mesh scale={1.18}>
+        <sphereGeometry args={[cfg.size, 24, 24]} />
+        <meshBasicMaterial
+          color={cfg.atmosphere}
+          transparent
+          opacity={0.16}
+          side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+
+      {cfg.ring && (
+        <group rotation={[Math.PI / 2.05, 0, 0]}>
+          <mesh>
+            <ringGeometry args={[cfg.size * 1.5, cfg.size * 2.35, 56]} />
+            <meshBasicMaterial
+              color={cfg.atmosphere}
+              transparent
+              opacity={0.3}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+            />
+          </mesh>
+          <mesh>
+            <ringGeometry args={[cfg.size * 1.42, cfg.size * 1.5, 56]} />
+            <meshBasicMaterial
+              color={cfg.body.color}
+              transparent
+              opacity={0.4}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+            />
+          </mesh>
+        </group>
+      )}
+    </group>
+  );
+}
+
+/** Artificial structure: central hub, habitat ring, solar panels, antenna. */
+function StationModel({ cfg }: { cfg: BodyConfig }) {
+  const s = cfg.size;
+  return (
+    <group>
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[s * 0.32, s * 0.32, s * 1.5, 12]} />
+        <meshStandardMaterial color="#b9c2cf" metalness={0.85} roughness={0.35} />
+      </mesh>
+      {/* habitat ring + glowing window band */}
+      <mesh>
+        <torusGeometry args={[s * 1.05, s * 0.14, 10, 28]} />
+        <meshStandardMaterial color="#9aa6b6" metalness={0.85} roughness={0.4} />
+      </mesh>
+      <mesh>
+        <torusGeometry args={[s * 1.05, s * 0.05, 8, 28]} />
+        <meshBasicMaterial color={cfg.body.color} />
+      </mesh>
+      {/* solar panels + strut */}
+      {[1, -1].map((dir) => (
+        <mesh key={dir} position={[dir * s * 1.5, 0, 0]}>
+          <boxGeometry args={[s * 1.1, s * 0.03, s * 0.55]} />
+          <meshStandardMaterial
+            color="#1e2c46"
+            emissive="#2c4a7a"
+            emissiveIntensity={0.35}
+            metalness={0.4}
+            roughness={0.6}
+          />
+        </mesh>
+      ))}
+      <mesh rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[s * 0.05, s * 0.05, s * 3, 6]} />
+        <meshStandardMaterial color="#8893a3" metalness={0.8} roughness={0.4} />
+      </mesh>
+      {/* antenna mast + beacon light */}
+      <mesh position={[0, s * 0.95, 0]}>
+        <cylinderGeometry args={[s * 0.03, s * 0.03, s * 0.7, 6]} />
+        <meshStandardMaterial color="#8893a3" metalness={0.8} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, s * 1.35, 0]}>
+        <sphereGeometry args={[s * 0.08, 8, 8]} />
+        <meshBasicMaterial color={cfg.body.color} />
+      </mesh>
+    </group>
+  );
+}
+
+/** A drifting graveyard of dead ship hulls. */
+function DerelictModel({ cfg }: { cfg: BodyConfig }) {
+  const hulls = useMemo(() => {
+    const rand = mulberry32(cfg.seed + 5);
+    return Array.from({ length: 16 }, () => {
+      const dir = new THREE.Vector3(
+        rand() - 0.5,
+        rand() - 0.5,
+        rand() - 0.5
+      ).normalize();
+      const dist = cfg.size * (0.3 + rand() * 1.5);
+      return {
+        pos: dir.multiplyScalar(dist).toArray() as [number, number, number],
+        rot: [rand() * 6.28, rand() * 6.28, rand() * 6.28] as [
+          number,
+          number,
+          number,
+        ],
+        len: cfg.size * (0.25 + rand() * 0.5),
+        w: cfg.size * (0.06 + rand() * 0.1),
+        lit: rand() > 0.82,
+        shade: 0.35 + rand() * 0.4,
+      };
+    });
+  }, [cfg.seed, cfg.size]);
+
+  return (
+    <group>
+      {hulls.map((h, i) => (
+        <mesh key={i} position={h.pos} rotation={h.rot}>
+          <boxGeometry args={[h.w, h.w, h.len]} />
+          <meshStandardMaterial
+            color={new THREE.Color(0.5, 0.55, 0.62).multiplyScalar(h.shade)}
+            metalness={0.6}
+            roughness={0.7}
+            emissive={h.lit ? "#88bbff" : "#000000"}
+            emissiveIntensity={h.lit ? 0.6 : 0}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** A jagged broken chunk with a faint arcane glow, trailing debris. */
+function FragmentModel({ cfg }: { cfg: BodyConfig }) {
+  const shards = useMemo(() => {
+    const rand = mulberry32(cfg.seed + 9);
+    return Array.from({ length: 3 }, () => ({
+      pos: [
+        (rand() - 0.5) * cfg.size * 2.4,
+        (rand() - 0.5) * cfg.size * 2.4,
+        (rand() - 0.5) * cfg.size * 2.4,
+      ] as [number, number, number],
+      rot: [rand() * 6.28, rand() * 6.28, rand() * 6.28] as [
+        number,
+        number,
+        number,
+      ],
+      r: cfg.size * (0.15 + rand() * 0.22),
+    }));
+  }, [cfg.seed, cfg.size]);
+
+  return (
+    <group>
+      <mesh>
+        <icosahedronGeometry args={[cfg.size, 0]} />
+        <meshStandardMaterial
+          color="#3b2d3e"
+          flatShading
+          roughness={0.95}
+          metalness={0.1}
+          emissive="#a23fb0"
+          emissiveIntensity={0.22}
+        />
+      </mesh>
+      {shards.map((sh, i) => (
+        <mesh key={i} position={sh.pos} rotation={sh.rot}>
+          <icosahedronGeometry args={[sh.r, 0]} />
+          <meshStandardMaterial
+            color="#33283a"
+            flatShading
+            roughness={0.95}
+            emissive="#a23fb0"
+            emissiveIntensity={0.18}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** A polished chrome orb — origins unknown. */
+function MirrorModel({ cfg }: { cfg: BodyConfig }) {
+  return (
+    <group>
+      <mesh>
+        <sphereGeometry args={[cfg.size, 48, 48]} />
+        <meshStandardMaterial
+          color="#e8edf5"
+          metalness={1}
+          roughness={0.06}
+          emissive="#2a3550"
+          emissiveIntensity={0.18}
+        />
+      </mesh>
+      <mesh scale={1.12}>
+        <sphereGeometry args={[cfg.size, 24, 24]} />
+        <meshBasicMaterial
+          color="#ffffff"
+          transparent
+          opacity={0.07}
+          side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+/** A bodiless energy phenomenon — pulsing, additive, no solid surface. */
+function AnomalyModel({ cfg }: { cfg: BodyConfig }) {
+  const pulseRef = useRef<THREE.Group>(null);
+  const glow = useMemo(() => makeRadialTexture(cfg.body.color, 1), [cfg.body.color]);
+
+  useEffect(() => () => glow.dispose(), [glow]);
+
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime;
+    const p = 1 + Math.sin(t * 1.6 + cfg.phase) * 0.12;
+    if (pulseRef.current) {
+      pulseRef.current.scale.setScalar(p);
+      pulseRef.current.rotation.x = t * 0.4;
+    }
+  });
+
+  return (
+    <group>
+      <sprite scale={[cfg.size * 4.2, cfg.size * 4.2, 1]} raycast={NO_RAYCAST}>
+        <spriteMaterial
+          map={glow}
+          transparent
+          opacity={0.5}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </sprite>
+      <group ref={pulseRef}>
+        <mesh>
+          <icosahedronGeometry args={[cfg.size * 0.85, 1]} />
+          <meshBasicMaterial
+            color={cfg.body.color}
+            transparent
+            opacity={0.4}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
+        <mesh>
+          <icosahedronGeometry args={[cfg.size * 1.08, 1]} />
+          <meshBasicMaterial
+            color={cfg.body.color}
+            wireframe
+            transparent
+            opacity={0.65}
+            blending={THREE.AdditiveBlending}
+            depthWrite={false}
+          />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+function BodyModel({ cfg }: { cfg: BodyConfig }) {
+  switch (cfg.kind) {
+    case "station":
+      return <StationModel cfg={cfg} />;
+    case "derelict":
+      return <DerelictModel cfg={cfg} />;
+    case "fragment":
+      return <FragmentModel cfg={cfg} />;
+    case "mirror":
+      return <MirrorModel cfg={cfg} />;
+    case "anomaly":
+      return <AnomalyModel cfg={cfg} />;
+    default:
+      return <PlanetModel cfg={cfg} />;
+  }
 }
 
 function Planet({
@@ -235,7 +564,7 @@ function Planet({
   selected,
   onSelectPlanet,
 }: {
-  cfg: PlanetConfig;
+  cfg: BodyConfig;
   systemId: string;
   selected: boolean;
   onSelectPlanet: (systemId: string, bodyName: string) => void;
@@ -244,6 +573,8 @@ function Planet({
   const spinRef = useRef<THREE.Group>(null);
   const scaleRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
+
+  const reach = cfg.size * BODY_REACH[cfg.kind];
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
@@ -274,71 +605,11 @@ function Planet({
     <group ref={posRef}>
       <group ref={scaleRef} rotation={[0, 0, cfg.axialTilt]}>
         <group ref={spinRef}>
-          <mesh>
-            <sphereGeometry args={[cfg.size, 32, 32]} />
-            <meshStandardMaterial
-              map={cfg.map}
-              emissive={cfg.body.color}
-              emissiveIntensity={0.06}
-              roughness={cfg.style === "gas" ? 0.95 : 0.85}
-              metalness={cfg.style === "ice" ? 0.1 : 0}
-            />
-          </mesh>
-
-          {cfg.clouds && (
-            <mesh scale={1.03}>
-              <sphereGeometry args={[cfg.size, 32, 32]} />
-              <meshStandardMaterial
-                map={cfg.clouds}
-                transparent
-                opacity={0.85}
-                depthWrite={false}
-                roughness={1}
-              />
-            </mesh>
-          )}
+          <BodyModel cfg={cfg} />
         </group>
-
-        {/* atmospheric rim glow (back-side additive shell) */}
-        <mesh scale={1.18}>
-          <sphereGeometry args={[cfg.size, 24, 24]} />
-          <meshBasicMaterial
-            color={cfg.atmosphere}
-            transparent
-            opacity={0.16}
-            side={THREE.BackSide}
-            blending={THREE.AdditiveBlending}
-            depthWrite={false}
-          />
-        </mesh>
-
-        {cfg.ring && (
-          <group rotation={[Math.PI / 2.05, 0, 0]}>
-            <mesh>
-              <ringGeometry args={[cfg.size * 1.5, cfg.size * 2.35, 56]} />
-              <meshBasicMaterial
-                color={cfg.atmosphere}
-                transparent
-                opacity={0.3}
-                side={THREE.DoubleSide}
-                depthWrite={false}
-              />
-            </mesh>
-            <mesh>
-              <ringGeometry args={[cfg.size * 1.42, cfg.size * 1.5, 56]} />
-              <meshBasicMaterial
-                color={cfg.body.color}
-                transparent
-                opacity={0.4}
-                side={THREE.DoubleSide}
-                depthWrite={false}
-              />
-            </mesh>
-          </group>
-        )}
       </group>
 
-      {/* generous transparent hit target — planets are small on screen */}
+      {/* generous transparent hit target — bodies are small on screen */}
       <mesh
         onClick={(e) => {
           e.stopPropagation();
@@ -350,13 +621,13 @@ function Planet({
         }}
         onPointerOut={() => setHovered(false)}
       >
-        <sphereGeometry args={[Math.max(cfg.size * 2.4, 0.55), 12, 12]} />
+        <sphereGeometry args={[Math.max(reach * 1.3, 0.6), 12, 12]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
 
       {selected && (
         <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[cfg.size * 2.2, cfg.size * 2.55, 48]} />
+          <ringGeometry args={[reach * 1.45, reach * 1.7, 48]} />
           <meshBasicMaterial
             color="#f0d080"
             transparent
@@ -370,7 +641,7 @@ function Planet({
       {(hovered || selected) && (
         <Html
           center
-          position={[0, Math.max(cfg.size, 0.3) + 0.7, 0]}
+          position={[0, reach + 0.6, 0]}
           zIndexRange={[20, 0]}
         >
           <div className="pointer-events-none select-none whitespace-nowrap rounded border border-[#c9a84c]/40 bg-[#07051a]/90 px-2 py-1 backdrop-blur-sm">
@@ -393,13 +664,13 @@ function OrbitingPlanets({
   selectedPlanet: string | null;
   onSelectPlanet: (systemId: string, bodyName: string) => void;
 }) {
-  const planets = useMemo(() => buildPlanets(system), [system]);
+  const planets = useMemo(() => buildBodies(system), [system]);
 
   // Free the per-body canvas textures when the focused system changes.
   useEffect(
     () => () => {
       planets.forEach((p) => {
-        p.map.dispose();
+        p.map?.dispose();
         p.clouds?.dispose();
       });
     },

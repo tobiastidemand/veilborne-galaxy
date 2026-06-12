@@ -12,11 +12,24 @@ export type Threat = "LOW" | "MODERATE" | "HIGH";
 
 export type StarKind = "star" | "blackhole" | "pulsar" | "binary" | "arcane";
 
+/**
+ * Visual archetype for a celestial body. Most are natural worlds (`planet`);
+ * the rest are artificial or exotic and get their own 3D models.
+ */
+export type BodyKind =
+  | "planet"
+  | "station"
+  | "derelict"
+  | "fragment"
+  | "mirror"
+  | "anomaly";
+
 export interface CelestialBody {
   name: string;
   description: string;
   color: string;
   highlight?: boolean;
+  kind?: BodyKind;
 }
 
 export interface StarSystemData {
@@ -107,6 +120,7 @@ export const SYSTEMS: StarSystemData[] = [
         description:
           "Abandoned space station of enormous size; hull markings in no known language.",
         color: "#999999",
+        kind: "station",
       },
     ],
     lore: "The beating heart of the Veilborn — and the seat of the Aureate Chain's power. The City of Pearls drifts through Caelum's amber clouds, its void-glass spires catching the light of the yellow star like a lantern in the deep. Cartographers mark this system as the starting point of all expeditions. Every road in the Veilborn eventually leads back here, and to the Chain.",
@@ -137,6 +151,7 @@ export const SYSTEMS: StarSystemData[] = [
         description:
           "Tear in space-time; ships that approach do not always return — or return changed.",
         color: "#cc44ff",
+        kind: "anomaly",
       },
       {
         name: "Char Moons I–IV",
@@ -178,12 +193,14 @@ export const SYSTEMS: StarSystemData[] = [
         description:
           "Neutral trading port built into a captured asteroid; lawless and essential.",
         color: "#7799aa",
+        kind: "station",
       },
       {
         name: "The Mirror",
         description:
           "Perfectly reflective sphere; not a planet; origins and nature completely unknown.",
         color: "#ddddee",
+        kind: "mirror",
       },
     ],
     lore: "The blue giant bathes this system in intense ultraviolet radiation. Only the shielded and the mutated survive here unprotected. The Cobalt Station traders have adapted in... interesting ways.",
@@ -230,6 +247,7 @@ export const SYSTEMS: StarSystemData[] = [
         description:
           "Graveyard of thousands of ancient starships frozen in silent orbit.",
         color: "#778899",
+        kind: "derelict",
       },
     ],
     lore: "Once this star was a colossus. Now it whispers. The Pale Cipher system is considered safe by most standards — no warlords, no active threats. The danger here is subtler: things that were buried are starting to wake up.",
@@ -254,12 +272,14 @@ export const SYSTEMS: StarSystemData[] = [
         description:
           "Fragment of destroyed planet in eternal decay orbit; time moves strangely here.",
         color: "#9944aa",
+        kind: "fragment",
       },
       {
         name: "The Chorus",
         description:
           "Cloud of dark energy emitting thousands of voices all saying the same word.",
         color: "#e84daa",
+        kind: "anomaly",
       },
     ],
     lore: "The navigation charts mark it in red and say only: DO NOT APPROACH UNSHIELDED. The Devourer eats light, eats ships, eats memory. Those who orbit too close return not knowing their own names. Whatever is at its center — the Arcane Survey refuses to speculate.",
@@ -300,6 +320,7 @@ export const SYSTEMS: StarSystemData[] = [
         description:
           "Artificial construct orbiting the pulsar; still broadcasting; signal undecoded.",
         color: "#ccffcc",
+        kind: "station",
       },
     ],
     lore: "Every 3.7 milliseconds, the Lantern Pulse sweeps its deadly beam across the system. The inhabitants of Rhythm have evolved around this — their biology, architecture, and religion all built to the pulse. They consider it sacred. They consider strangers who don't bow to it... impolite.",
@@ -346,6 +367,7 @@ export const SYSTEMS: StarSystemData[] = [
         description:
           "Unnamed on civilian charts; floating Chain station at the gravitational midpoint between the twin suns — for transactions that benefit from occurring beyond any planetary jurisdiction.",
         color: "#aa8855",
+        kind: "station",
       },
     ],
     lore: "Twin Embers is the Aureate Chain's commercial heartland. Four trade hubs, a hidden military platform, and over sixty percent of all system commerce passing through Chain-registered intermediaries. Chain-Lady Mirreth commands it all from the Iron Ledger, high above Twinreach. It is the most 'civilized' corner of the Veilborn. That civilization has a price, and the Chain sets it.",
@@ -373,12 +395,14 @@ export const SYSTEMS: StarSystemData[] = [
         description:
           "Exists in two planes simultaneously; what you see and what is there are different things.",
         color: "#cc44ff",
+        kind: "anomaly",
       },
       {
         name: "The Loom",
         description:
           "Ley-lines of raw magical energy woven between these coordinates; no physical form.",
         color: "#8866ff",
+        kind: "anomaly",
       },
       {
         name: "Cradle of Ending",
@@ -391,6 +415,7 @@ export const SYSTEMS: StarSystemData[] = [
         description:
           "Does not appear on most instruments; surveyors report feeling watched when they search for it.",
         color: "#443355",
+        kind: "anomaly",
       },
     ],
     lore: "The Voidmother resists categorization. The star at its center emits no known spectrum of light, yet the worlds orbit happily. The Arcane Survey has classified it as a Level-7 Metaphysical Anomaly and strongly recommends leaving it alone. Adventurers, naturally, do not listen.",
