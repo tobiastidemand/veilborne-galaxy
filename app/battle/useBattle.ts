@@ -63,6 +63,9 @@ export function useBattle() {
   const update = useCallback(
     (transform: (prev: BattleState) => BattleState) => {
       const next = { ...transform(stateRef.current), updatedAt: Date.now() };
+      // Keep the ref current synchronously so several update() calls in the same
+      // tick chain off fresh state instead of all reading the stale committed one.
+      stateRef.current = next;
       setState(next); // optimistic / local
       const sb = supabase;
       if (sb) {

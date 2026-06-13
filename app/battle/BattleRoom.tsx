@@ -6,25 +6,35 @@ import { useState } from "react";
 import { RoleCard } from "./RoleCard";
 import { useBattle } from "./useBattle";
 import {
-  advancePhase,
+  advanceBeat,
+  applyAbility,
+  commence,
+  endBattle,
   enemiesFire,
+  unleashEpic,
+  type Ability,
   type ActionCtx,
-  type ActionDef,
 } from "./engine";
 import {
-  MOMENTUM_PER_ROUND,
-  POWER_PER_ROUND,
+  BEATS,
   ROLES,
   SHIELD_OVERCAP,
+  SYNC_FOR_EPIC,
   makeEnemy,
+  type Beat,
   type Condition,
-  type Phase,
+  type EnemySize,
   type RoleId,
 } from "./types";
 
-const clamp = (v: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, v));
-const PHASES: Phase[] = ["start", "action", "reaction", "end"];
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
+const BEAT_LABEL: Record<Beat, string> = {
+  spool: "Spool Up",
+  strike: "Strike Chain",
+  brace: "Brace Chain",
+  cooldown: "Cool Down",
+};
 
 function Bar({ label, value, max, color, soft }: { label: string; value: number; max: number; color: string; soft?: number }) {
   const pct = max > 0 ? clamp((value / max) * 100, 0, 100) : 0;
@@ -33,7 +43,9 @@ function Bar({ label, value, max, color, soft }: { label: string; value: number;
     <div>
       <div className="mb-1 flex items-baseline justify-between text-[10px] uppercase tracking-[0.16em] text-[#c9a84c]/70">
         <span>{label}</span>
-        <span className="text-[#e9e2d0]/80">{value} / {soft ?? max}</span>
+        <span className="text-[#e9e2d0]/80">
+          {value} / {soft ?? max}
+        </span>
       </div>
       <div className="relative h-2 overflow-hidden rounded-full bg-white/5">
         {softPct > 0 && <div className="absolute inset-y-0 left-0 bg-white/10" style={{ width: `${softPct}%` }} />}
@@ -78,8 +90,9 @@ export default function BattleRoom() {
       return "";
     }
   });
-  const [enemyName, setEnemyName] = useState("Raider");
-  const [enemyHull, setEnemyHull] = useState(10);
+  const [enemyName, setEnemyName] = useState("Cobalt Reaver");
+  const [enemyTier, setEnemyTier] = useState(1);
+  const [enemySize, setEnemySize] = useState<EnemySize>("line");
 
   const saveCrew = (name: string) => {
     setCrew(name);
@@ -90,17 +103,16 @@ export default function BattleRoom() {
     }
   };
 
-  const act = (roleId: RoleId, action: ActionDef, ctx: Partial<ActionCtx>) =>
-    update((s) => {
-      if (!s.active || s.phase !== "action" || s.roles[roleId].acted) return s;
-      const ns = action.run(s, { actor: crew, ...ctx });
-      return { ...ns, roles: { ...ns.roles, [roleId]: { ...ns.roles[roleId], acted: true } } };
-    });
+  const act = (roleId: RoleId, ability: Ability, ctx: Partial<ActionCtx>) =>
+    update((s) => applyAbility(s, roleId, ability.id, { actor: crew || "Someone", ...ctx }));
 
   const setClaim = (id: RoleId, claimedBy: string | null) =>
     update((s) => ({ ...s, roles: { ...s.roles, [id]: { ...s.roles[id], claimedBy } } }));
 
-  const nextPhase = PHASES[(PHASES.indexOf(state.phase) + 1) % PHASES.length];
+  const ch = state.chain;
+  const iAmCommander = state.roles.commander.claimedBy === crew && !!crew;
+  const canUnleash = state.ship.epicBanked && (state.beat === "strike" || state.beat === "brace") && !ch.open;
+
   const status = configured
     ? connected
       ? { dot: "bg-[#7fff9f]", label: "LIVE" }
@@ -137,26 +149,40 @@ export default function BattleRoom() {
           </div>
         </header>
 
-        {/* phase tracker */}
+        {/* beat tracker */}
         <div className="mb-4 flex items-center gap-2">
-          {PHASES.map((p) => (
+          {BEATS.map((b) => (
             <span
-              key={p}
-              className={`flex-1 rounded-sm border px-2 py-1 text-center font-display text-[10px] font-bold uppercase tracking-[0.18em] ${
-                state.phase === p && state.active
-                  ? "border-[#f0d080] bg-[#f0d080]/10 text-[#f0d080]"
-                  : "border-white/10 text-white/35"
+              key={b}
+              className={`flex-1 rounded-sm border px-2 py-1 text-center font-display text-[10px] font-bold uppercase tracking-[0.14em] ${
+                state.beat === b && state.active ? "border-[#f0d080] bg-[#f0d080]/10 text-[#f0d080]" : "border-white/10 text-white/35"
               }`}
             >
-              {p}
+              {BEAT_LABEL[b]}
             </span>
           ))}
         </div>
 
         {!configured && (
           <div className="mb-4 rounded-sm border border-[#ff9f40]/40 bg-[#ff9f40]/5 px-4 py-2 text-[12px] text-[#ffd2a0]/90">
-            Local preview — add Supabase env to sync all crew screens. Combat
-            logic runs fully here for testing.
+            Local preview — add Supabase env to sync all crew screens. Combat logic runs fully here for testing.
+          </div>
+        )}
+
+        {/* Epic banner */}
+        {canUnleash && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-sm border border-[#f0d080]/60 bg-[#f0d080]/10 px-4 py-2">
+            <span className="font-display text-[12px] font-bold uppercase tracking-[0.2em] text-[#f0d080]">
+              ★ Epic Chain ready — the crew is in perfect sync
+            </span>
+            {(iAmCommander || dm) && (
+              <button
+                onClick={() => update(unleashEpic)}
+                className="rounded border border-[#f0d080] px-3 py-1 font-display text-[10px] font-bold uppercase tracking-[0.18em] text-[#f0d080] hover:bg-[#f0d080]/20"
+              >
+                Unleash Epic {state.beat === "strike" ? "Strike" : "Brace"}
+              </button>
+            )}
           </div>
         )}
 
@@ -177,22 +203,79 @@ export default function BattleRoom() {
             <section className="tome-panel tome-frame rounded-sm border border-[#c9a84c]/30 p-4">
               <div className="mb-3 flex items-center justify-between">
                 <span className="font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#c9a84c]">Survey Vessel</span>
-                <span className="text-[10px] uppercase tracking-[0.16em] text-[#c9a84c]/50">
-                  {state.ship.evasion > 0 && `+${state.ship.evasion} def · `}
-                  {state.buffs.attackMod > 0 && `+${state.buffs.attackMod} atk · `}
-                  {state.buffs.dmgMod > 0 && `+${state.buffs.dmgMod} dmg`}
-                </span>
+                <div className="flex flex-wrap items-center gap-1 text-[9px] uppercase tracking-wider">
+                  {state.ship.evasion > 0 && <span className="rounded border border-[#7fe0ff]/40 px-1 py-0.5 text-[#7fe0ff]">+{state.ship.evasion} def</span>}
+                  {state.ship.conceal > 0 && <span className="rounded border border-[#cc88ff]/40 px-1 py-0.5 text-[#cc88ff]">−{state.ship.conceal} incoming</span>}
+                  {state.ship.negate > 0 && <span className="rounded border border-[#7fff9f]/40 px-1 py-0.5 text-[#7fff9f]">{state.ship.negate} intercept</span>}
+                  {state.ship.conditions.map(condTag)}
+                </div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Bar label="Hull" value={state.ship.hull} max={state.ship.maxHull} color="#ff8855" />
                 <Bar label="Shields" value={state.ship.shields} max={state.ship.maxShields + SHIELD_OVERCAP} soft={state.ship.maxShields} color="#7fe0ff" />
-                <Bar label="Power" value={state.ship.power} max={state.ship.maxPower} color="#f0d080" />
-                <Bar label="Momentum" value={state.ship.momentum} max={state.ship.maxMomentum} color="#cc88ff" />
               </div>
+
+              {/* sync meter */}
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-[0.16em] text-[#c9a84c]/70">Sync</span>
+                <div className="flex gap-1">
+                  {Array.from({ length: SYNC_FOR_EPIC }).map((_, i) => (
+                    <span
+                      key={i}
+                      className={`h-2 w-5 rounded-sm border ${
+                        i < state.ship.sync ? "border-[#f0d080] bg-[#f0d080]/70" : "border-white/15 bg-white/5"
+                      }`}
+                    />
+                  ))}
+                </div>
+                {state.ship.epicBanked && <span className="text-[10px] font-bold uppercase tracking-wider text-[#f0d080]">★ Epic banked</span>}
+              </div>
+
               {state.ship.hull <= 0 && (
-                <div className="mt-3 text-center font-display text-sm font-bold uppercase tracking-[0.2em] text-[#ff6b6b]">☠ Hull breached — the vessel is lost</div>
+                <div className="mt-3 text-center font-display text-sm font-bold uppercase tracking-[0.2em] text-[#ff6b6b]">
+                  ☠ Hull breached — the vessel is crippled
+                </div>
               )}
             </section>
+
+            {/* chain status */}
+            {state.active && (state.beat === "strike" || state.beat === "brace") && (
+              <section className={`rounded-sm border p-3 ${ch.epic ? "border-[#f0d080]/60 bg-[#f0d080]/5" : "border-white/15"}`}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-[#c9a84c]">
+                    {ch.epic ? "★ Epic " : ""}
+                    {state.beat === "strike" ? "Strike" : "Brace"} Chain
+                  </span>
+                  <span className="text-[10px] uppercase tracking-wider text-white/45">
+                    {!ch.open
+                      ? "Awaiting the Open"
+                      : ch.done
+                      ? "Chain complete — GM advances"
+                      : `Length ${ch.length}${ch.epic ? " (full)" : ""}`}
+                  </span>
+                </div>
+                {ch.open && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1 text-[9px] uppercase tracking-wider">
+                    {ch.acted.map((r) => (
+                      <span key={r} className="rounded border border-[#c9a84c]/40 px-1 py-0.5 text-[#e9e2d0]/70">
+                        {ROLES.find((x) => x.id === r)?.name ?? r}
+                      </span>
+                    ))}
+                    {ch.handoff.toHit > 0 && <Hand>+{ch.handoff.toHit} hit</Hand>}
+                    {ch.handoff.effectStep > 0 && <Hand>+{ch.handoff.effectStep} effect</Hand>}
+                    {ch.handoff.tnDown > 0 && <Hand>TN −{ch.handoff.tnDown}</Hand>}
+                    {ch.handoff.ignoreShields && <Hand>bypass shields</Hand>}
+                  </div>
+                )}
+                {!ch.open && (
+                  <p className="mt-1.5 text-[10px] italic text-white/35">
+                    {state.beat === "strike"
+                      ? "The Commander opens with Call the Shot, then the crew links toward a Finisher."
+                      : "The GM declares the enemy's move; the Commander opens with All Hands, then the crew braces."}
+                  </p>
+                )}
+              </section>
+            )}
 
             {/* roles */}
             <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -204,7 +287,7 @@ export default function BattleRoom() {
                   crewName={crew}
                   onClaim={() => setClaim(r.id, crew)}
                   onRelease={() => setClaim(r.id, null)}
-                  onAct={(action, ctx) => act(r.id, action, ctx)}
+                  onAct={(ability, ctx) => act(r.id, ability, ctx)}
                 />
               ))}
             </section>
@@ -222,10 +305,10 @@ export default function BattleRoom() {
                     <li key={e.id} className="flex flex-col gap-1">
                       <div className="flex items-center justify-between text-[11px] text-[#e9e2d0]/70">
                         <span>{e.name}</span>
-                        <span className="text-white/40">TN {e.tn}</span>
+                        <span className="text-white/40">TN {e.tn} · T{e.tier}</span>
                       </div>
                       <Bar label="Hull" value={e.hull} max={e.maxHull} color="#ff6b6b" />
-                      {e.shields > 0 && <Bar label="Shields" value={e.shields} max={e.shields} color="#7fe0ff" />}
+                      {e.maxShields > 0 && <Bar label="Shields" value={e.shields} max={e.maxShields} color="#7fe0ff" />}
                       {e.conditions.length > 0 && <div className="flex flex-wrap gap-1">{e.conditions.map(condTag)}</div>}
                     </li>
                   ))}
@@ -237,7 +320,9 @@ export default function BattleRoom() {
               <div className="mb-2 font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#c9a84c]">Combat Log</div>
               <ul className="flex flex-col gap-1 text-[12px] leading-snug text-[#e9e2d0]/70">
                 {[...state.log].reverse().map((line, i) => (
-                  <li key={state.log.length - i} className="border-b border-white/5 pb-1">{line}</li>
+                  <li key={state.log.length - i} className="border-b border-white/5 pb-1">
+                    {line}
+                  </li>
                 ))}
               </ul>
             </section>
@@ -250,33 +335,51 @@ export default function BattleRoom() {
             <div className="mb-3 font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#7fe0ff]">Dungeon Master</div>
             <div className="mb-4 flex flex-wrap gap-2">
               {!state.active ? (
-                <Dm onClick={() => update((s) => ({
-                  ...s,
-                  active: true,
-                  round: 1,
-                  phase: "action",
-                  ship: {
-                    ...s.ship,
-                    momentum: clamp(s.ship.momentum + MOMENTUM_PER_ROUND, 0, s.ship.maxMomentum),
-                    power: clamp(s.ship.power + POWER_PER_ROUND, 0, s.ship.maxPower),
-                  },
-                  log: [...s.log, "[R1] Battle commences — crew to stations! (Action phase)"],
-                }))}>
-                  ⚔ Commence battle
-                </Dm>
+                <Dm onClick={() => update(commence)}>⚔ Commence battle</Dm>
               ) : (
                 <>
-                  <Dm onClick={() => update(advancePhase)}>▶ {nextPhase}</Dm>
-                  <Dm onClick={() => update(enemiesFire)}>✦ Enemies fire</Dm>
-                  <Dm onClick={() => update((s) => ({ ...s, active: false, log: [...s.log, `[R${s.round}] The engagement ends.`] }))}>✕ End battle</Dm>
+                  <Dm onClick={() => update(advanceBeat)}>▶ Next beat</Dm>
+                  {state.beat === "brace" && <Dm onClick={() => update(enemiesFire)}>✦ Enemies fire</Dm>}
+                  {canUnleash && <Dm onClick={() => update(unleashEpic)}>★ Unleash Epic</Dm>}
+                  <Dm onClick={() => update(endBattle)}>✕ End battle</Dm>
                 </>
               )}
             </div>
 
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <input value={enemyName} onChange={(e) => setEnemyName(e.target.value)} className="w-36 rounded border border-[#7fe0ff]/30 bg-[#0b0820]/60 px-2 py-1 text-sm outline-none focus:border-[#7fe0ff]" />
-              <input type="number" value={enemyHull} onChange={(e) => setEnemyHull(Number(e.target.value) || 0)} className="w-20 rounded border border-[#7fe0ff]/30 bg-[#0b0820]/60 px-2 py-1 text-sm outline-none focus:border-[#7fe0ff]" />
-              <Dm onClick={() => update((s) => ({ ...s, enemies: [...s.enemies, makeEnemy(enemyName || "Hostile", enemyHull)], log: [...s.log, `[R${s.round}] ${enemyName || "A hostile"} enters the fray (${enemyHull} hull).`] }))}>
+              <input
+                value={enemyName}
+                onChange={(e) => setEnemyName(e.target.value)}
+                className="w-40 rounded border border-[#7fe0ff]/30 bg-[#0b0820]/60 px-2 py-1 text-sm outline-none focus:border-[#7fe0ff]"
+              />
+              <select
+                value={enemyTier}
+                onChange={(e) => setEnemyTier(Number(e.target.value))}
+                className="rounded border border-[#7fe0ff]/30 bg-[#0b0820]/60 px-2 py-1 text-sm outline-none focus:border-[#7fe0ff]"
+              >
+                {[1, 2, 3, 4, 5].map((t) => (
+                  <option key={t} value={t} className="bg-[#0b0820]">
+                    Tier {t}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={enemySize}
+                onChange={(e) => setEnemySize(e.target.value as EnemySize)}
+                className="rounded border border-[#7fe0ff]/30 bg-[#0b0820]/60 px-2 py-1 text-sm outline-none focus:border-[#7fe0ff]"
+              >
+                <option value="skirmisher" className="bg-[#0b0820]">Skirmisher</option>
+                <option value="line" className="bg-[#0b0820]">Line</option>
+                <option value="elite" className="bg-[#0b0820]">Elite</option>
+              </select>
+              <Dm
+                onClick={() =>
+                  update((s) => {
+                    const e = makeEnemy(enemyName || "Hostile", enemyTier, enemySize);
+                    return { ...s, enemies: [...s.enemies, e], log: [...s.log, `[R${s.round}] ${e.name} enters the fray (${e.hull} hull, TN ${e.tn}).`] };
+                  })
+                }
+              >
                 + Spawn hostile
               </Dm>
             </div>
@@ -285,9 +388,11 @@ export default function BattleRoom() {
               <div className="flex flex-col gap-1.5">
                 {state.enemies.map((e) => (
                   <div key={e.id} className="flex items-center gap-2 text-[12px]">
-                    <span className="flex-1 truncate text-[#e9e2d0]/80">{e.name} — {e.hull}/{e.maxHull} hull · {e.shields} shd</span>
-                    <Mini onClick={() => update((s) => ({ ...s, enemies: s.enemies.map((x) => x.id === e.id ? { ...x, hull: Math.max(0, x.hull - 3) } : x) }))}>−3</Mini>
-                    <Mini onClick={() => update((s) => ({ ...s, enemies: s.enemies.map((x) => x.id === e.id ? { ...x, hull: Math.min(x.maxHull, x.hull + 3) } : x) }))}>+3</Mini>
+                    <span className="flex-1 truncate text-[#e9e2d0]/80">
+                      {e.name} — {e.hull}/{e.maxHull} hull · {e.shields} shd
+                    </span>
+                    <Mini onClick={() => update((s) => ({ ...s, enemies: s.enemies.map((x) => (x.id === e.id ? { ...x, hull: Math.max(0, x.hull - 3) } : x)) }))}>−3</Mini>
+                    <Mini onClick={() => update((s) => ({ ...s, enemies: s.enemies.map((x) => (x.id === e.id ? { ...x, hull: Math.min(x.maxHull, x.hull + 3) } : x)) }))}>+3</Mini>
                     <Mini onClick={() => update((s) => ({ ...s, enemies: s.enemies.filter((x) => x.id !== e.id) }))}>✕</Mini>
                   </div>
                 ))}
@@ -298,6 +403,10 @@ export default function BattleRoom() {
       </div>
     </div>
   );
+}
+
+function Hand({ children }: { children: React.ReactNode }) {
+  return <span className="rounded border border-[#f0d080]/40 px-1 py-0.5 text-[#f0d080]">{children}</span>;
 }
 
 function Dm({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {

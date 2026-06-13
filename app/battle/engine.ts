@@ -1,58 +1,57 @@
 import {
+  BEATS,
+  CHAIN_CAP,
+  CUT_BONUS,
   DAMAGE_BASE,
   DAMAGE_LABEL,
   DEGREE_STEP,
-  MOMENTUM_PER_ROUND,
-  POWER_PER_ROUND,
+  PER_LINK_HEAVY,
+  PER_LINK_LIGHT,
+  RANGES,
   SHIELD_OVERCAP,
+  SHIP_BY_TIER,
   SHIP_DEFENCE_BASE,
-  WEAPON_POWER,
+  SYNC_FOR_EPIC,
+  freshChain,
   type BattleState,
+  type ChainKind,
   type Condition,
   type ConditionKind,
   type DamageType,
   type RoleId,
 } from "./types";
 
-const clamp = (v: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, v));
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 const d20 = () => 1 + Math.floor(Math.random() * 20);
-
-// Extra damage for clearing the TN handily (rewards Mark / Inspire / good rolls).
-const degrees = (total: number, tn: number) =>
-  Math.max(0, Math.floor((total - tn) / DEGREE_STEP));
+const degrees = (total: number, tn: number) => Math.max(0, Math.floor((total - tn) / DEGREE_STEP));
 
 const log = (s: BattleState, line: string): BattleState => ({
   ...s,
-  log: [...s.log, `[R${s.round}] ${line}`].slice(-100),
+  log: [...s.log, `[R${s.round}] ${line}`].slice(-120),
 });
 
-const hasCond = (list: Condition[], kind: ConditionKind) =>
-  list.some((c) => c.kind === kind);
-
-const addCond = (list: Condition[], kind: ConditionKind, rounds: number): Condition[] => {
-  const rest = list.filter((c) => c.kind !== kind);
-  return [...rest, { kind, rounds }];
-};
-
+const hasCond = (list: Condition[], kind: ConditionKind) => list.some((c) => c.kind === kind);
+const addCond = (list: Condition[], kind: ConditionKind, rounds: number): Condition[] => [
+  ...list.filter((c) => c.kind !== kind),
+  { kind, rounds },
+];
 const shieldCap = (s: BattleState) => s.ship.maxShields + SHIELD_OVERCAP;
 
-/** Resolve typed damage against a shields/hull pair. Returns the new values. */
+/** Resolve typed damage against a shields/hull pair. */
 function resolveDamage(
   shields: number,
   hull: number,
   type: DamageType,
   dmg: number,
-  breached: boolean
+  bypassShields: boolean
 ): { shields: number; hull: number; note: string } {
-  // AP and breached targets bypass shields entirely.
-  if (type === "ap" || breached) {
+  if (bypassShields) {
     return { shields, hull: Math.max(0, hull - dmg), note: `${dmg} to hull` };
   }
   let effective = dmg;
   if (shields > 0) {
-    if (type === "laser") effective += 1; // strong vs shields
-    if (type === "missile") effective = Math.max(1, effective - 1); // weak vs shields
+    if (type === "laser") effective += 1;
+    if (type === "missile") effective = Math.max(1, effective - 1);
   }
   const absorbed = Math.min(shields, effective);
   const hullHit = effective - absorbed;
@@ -67,325 +66,588 @@ export interface ActionCtx {
   actor: string;
   targetId?: string;
   weapon?: DamageType;
+  repair?: "hull" | "shield";
 }
 
-export interface ActionDef {
+interface RunOpts {
+  links: number; // chain length driving finish scaling
+  cutBonus: number; // +2 if finishing early (a Cut)
+}
+
+export interface Ability {
   id: string;
   label: string;
-  power?: number;
-  momentum?: number;
-  needsTarget?: boolean;
-  weapon?: boolean; // gunner: pick a damage type + target
   hint: string;
-  run: (s: BattleState, ctx: ActionCtx) => BattleState;
+  role: RoleId;
+  chain: ChainKind;
+  kind: "open" | "link" | "finish";
+  needsTarget?: boolean;
+  weapon?: boolean; // gunner: choose a weapon type
+  repairChoice?: boolean; // engineer: hull or shield
+  run: (s: BattleState, c: ActionCtx, o: RunOpts) => { state: BattleState; success: boolean };
 }
 
-const spend = (s: BattleState, power = 0, momentum = 0): BattleState => ({
-  ...s,
-  ship: {
-    ...s.ship,
-    power: Math.max(0, s.ship.power - power),
-    momentum: Math.max(0, s.ship.momentum - momentum),
-  },
-});
+/* --- shared attack resolution (every attack finisher routes through here) -- */
 
-export function actionCost(a: ActionDef, weapon?: DamageType): { power: number; momentum: number } {
+function attack(
+  s: BattleState,
+  c: ActionCtx,
+  o: RunOpts,
+  type: DamageType,
+  perLink: number,
+  extra?: { autoBreach?: boolean; critRange?: number; disableOnHit?: boolean }
+): { state: BattleState; success: boolean } {
+  const enemy = s.enemies.find((e) => e.id === c.targetId);
+  if (!enemy) return { state: log(s, `${c.actor} fires — no target.`), success: false };
+
+  const h = s.chain.handoff;
+  const die = d20();
+  const critRange = extra?.critRange ?? 20;
+  const crit = die >= critRange;
+  const marked = hasCond(enemy.conditions, "marked");
+  const breached = hasCond(enemy.conditions, "breached");
+  const total = die + s.ship.tier + h.toHit + (marked ? 2 : 0) + o.cutBonus;
+  const tn = enemy.tn - h.tnDown - (breached ? 2 : 0);
+  const label = DAMAGE_LABEL[type];
+
+  const writeEnemy = (shields: number, hull: number, conditions: Condition[]) =>
+    s.enemies
+      .map((e) => (e.id === enemy.id ? { ...e, shields, hull, conditions } : e))
+      .filter((e) => e.hull > 0);
+
+  if (!crit && total < tn) {
+    if (total >= tn - 2) {
+      const res = resolveDamage(enemy.shields, enemy.hull, type, 1, type === "ap" || breached);
+      return {
+        state: log(
+          { ...s, enemies: writeEnemy(res.shields, res.hull, enemy.conditions) },
+          `${c.actor} grazes ${enemy.name} (${label}) — ${total} vs ${tn}: ${res.note}.`
+        ),
+        success: false,
+      };
+    }
+    return {
+      state: log(s, `${c.actor} fires ${label} at ${enemy.name} — ${total} vs ${tn}, miss.`),
+      success: false,
+    };
+  }
+
+  const links = Math.min(o.links, CHAIN_CAP);
+  let dmg = DAMAGE_BASE[type] + h.effectStep + perLink * links + degrees(total, tn);
+  if (crit) dmg *= 2;
+  const bypass = h.ignoreShields || type === "ap" || breached || !!extra?.autoBreach;
+  const res = resolveDamage(enemy.shields, enemy.hull, type, dmg, bypass);
+
+  let conds = enemy.conditions;
+  if (crit) conds = addCond(conds, "burning", 2);
+  if (type === "ap" || extra?.autoBreach) conds = addCond(conds, "breached", 2);
+  if (extra?.disableOnHit) conds = addCond(conds, "disabled", 1);
+
+  const enemies = writeEnemy(res.shields, res.hull, conds);
+  const dead = res.hull <= 0;
+  const linkNote = links > 0 ? ` [chain ${links}]` : "";
   return {
-    power: a.weapon && weapon ? WEAPON_POWER[weapon] : a.power ?? 0,
-    momentum: a.momentum ?? 0,
+    state: log(
+      { ...s, enemies },
+      dead
+        ? `${c.actor} DESTROYS ${enemy.name}! (${label}, ${total}${crit ? " CRIT" : ""}${linkNote})`
+        : `${c.actor} hits ${enemy.name} (${label}, ${total}${crit ? " CRIT" : ""}${linkNote}): ${res.note}.`
+    ),
+    success: true,
   };
 }
 
-export function canAfford(s: BattleState, a: ActionDef, weapon?: DamageType): boolean {
-  const c = actionCost(a, weapon);
-  return s.ship.power >= c.power && s.ship.momentum >= c.momentum;
-}
+/* --- handoff / ship mutation helpers ------------------------------------- */
 
-/** Unified attack roll used by the Gunner and the Commander's secondary. */
-function performAttack(
-  s: BattleState,
-  actor: string,
-  targetId: string,
-  type: DamageType
-): BattleState {
-  const enemy = s.enemies.find((e) => e.id === targetId);
-  if (!enemy) return log(s, `${actor} fires — no target.`);
+const bumpHandoff = (s: BattleState, patch: Partial<BattleState["chain"]["handoff"]>): BattleState => ({
+  ...s,
+  chain: { ...s.chain, handoff: { ...s.chain.handoff, ...patch } },
+});
 
-  const die = d20();
-  const crit = die === 20;
-  const marked = hasCond(enemy.conditions, "marked");
-  const breached = hasCond(enemy.conditions, "breached");
-  const rangeMod =
-    type === "laser" ? (s.range === "close" ? 1 : -1) : type === "missile" ? (s.range === "long" ? 1 : -1) : 0;
-  const accBonus = type === "balanced" ? 2 : 0; // Balanced is the reliable, accurate option
-  const total = die + s.ship.tier + s.buffs.attackMod + (marked ? 2 : 0) + rangeMod + accBonus;
-  const tn = enemy.tn - (breached ? 2 : 0);
-  const label = DAMAGE_LABEL[type];
+const markEnemy = (s: BattleState, id: string | undefined, kind: ConditionKind, rounds: number): BattleState => ({
+  ...s,
+  enemies: s.enemies.map((e) => (e.id === id ? { ...e, conditions: addCond(e.conditions, kind, rounds) } : e)),
+});
 
-  const kill = (list: typeof s.enemies) => list.filter((e) => e.hull > 0);
+/* --- the ability matrix (§6 of docs/ship-combat.md) ---------------------- */
 
-  // miss — but a near miss grazes for 1
-  if (!crit && total < tn) {
-    if (total >= tn - 2) {
-      const res = resolveDamage(enemy.shields, enemy.hull, type, 1, breached);
-      const enemies = kill(
-        s.enemies.map((e) => (e.id === enemy.id ? { ...e, shields: res.shields, hull: res.hull } : e))
-      );
-      return log({ ...s, enemies }, `${actor} grazes ${enemy.name} with ${label} — rolled ${total} vs ${tn}: ${res.note}.`);
-    }
-    return log(s, `${actor} fires ${label} at ${enemy.name} — rolled ${total} vs ${tn}, miss.`);
-  }
-
-  let dmg = DAMAGE_BASE[type] + s.buffs.dmgMod + degrees(total, tn);
-  if (crit) dmg *= 2;
-  const res = resolveDamage(enemy.shields, enemy.hull, type, dmg, breached);
-  const enemies = kill(
-    s.enemies.map((e) =>
-      e.id === enemy.id
-        ? {
-            ...e,
-            shields: res.shields,
-            hull: res.hull,
-            conditions: (() => {
-              let cs = e.conditions;
-              if (crit) cs = addCond(cs, "burning", 2);
-              if (type === "ap") cs = addCond(cs, "breached", 2);
-              return cs;
-            })(),
-          }
-        : e
-    )
-  );
-  const dead = res.hull <= 0;
-  return log(
-    { ...s, enemies },
-    dead
-      ? `${actor} destroys ${enemy.name}! (${label}, rolled ${total}${crit ? " CRIT" : ""})`
-      : `${actor} hits ${enemy.name} with ${label} — rolled ${total}${crit ? " CRIT" : ""}: ${res.note}.`
-  );
-}
-
-/* --- role action menus -------------------------------------------- */
-
-export const ROLE_ACTIONS: Record<RoleId, ActionDef[]> = {
+export const ROLE_KIT: Record<RoleId, Ability[]> = {
   commander: [
     {
-      id: "inspire",
-      label: "Inspire",
-      momentum: 2,
-      hint: "+2 to all crew attack rolls this round",
-      run: (s, c) =>
-        log(
-          { ...spend(s, 0, 2), buffs: { ...s.buffs, attackMod: s.buffs.attackMod + 2 } },
-          `${c.actor} inspires the crew — +2 to attacks this round.`
-        ),
-    },
-    {
-      id: "focus",
-      label: "Focus fire",
-      momentum: 1,
-      hint: "+3 damage to every weapon hit this round",
-      run: (s, c) =>
-        log(
-          { ...spend(s, 0, 1), buffs: { ...s.buffs, dmgMod: s.buffs.dmgMod + 3 } },
-          `${c.actor} calls focused fire — +3 damage this round.`
-        ),
-    },
-    {
-      id: "openfire",
-      label: "Open fire (secondary)",
-      momentum: 1,
+      id: "call-the-shot",
+      label: "Call the Shot",
+      hint: "Open the Strike: name a target; the chain gains +Tier to hit and shakes its defence.",
+      role: "commander",
+      chain: "strike",
+      kind: "open",
       needsTarget: true,
-      hint: "fire the ship's secondary battery — a Balanced shot",
-      run: (s, c) => performAttack(spend(s, 0, 1), c.actor, c.targetId ?? "", "balanced"),
+      run: (s, c) => {
+        const t = s.ship.tier;
+        const ns = bumpHandoff(
+          { ...s, chain: { ...s.chain, targetId: c.targetId ?? null } },
+          { toHit: s.chain.handoff.toHit + t, tnDown: s.chain.handoff.tnDown + 1 }
+        );
+        return {
+          state: log(ns, `${c.actor} calls the shot on ${enemyName(ns, c.targetId)} — chain +${t} to hit.`),
+          success: true,
+        };
+      },
+    },
+    {
+      id: "all-hands",
+      label: "All Hands",
+      hint: "Open the Brace: read the threat; the ship gains +Tier defence.",
+      role: "commander",
+      chain: "brace",
+      kind: "open",
+      run: (s, c) => {
+        const t = s.ship.tier;
+        const ns = bumpHandoff({ ...s, ship: { ...s.ship, evasion: s.ship.evasion + t } }, {
+          defense: s.chain.handoff.defense + t,
+        });
+        return { state: log(ns, `${c.actor} calls all hands — +${t} ship defence.`), success: true };
+      },
     },
   ],
   navigator: [
     {
-      id: "evade",
-      label: "Evasive maneuvers",
-      power: 2,
-      hint: "+2 ship defence this round",
-      run: (s, c) =>
-        log(
-          { ...spend(s, 2), ship: { ...s.ship, evasion: s.ship.evasion + 2 } },
-          `${c.actor} flies evasive — +2 defence this round.`
-        ),
+      id: "attack-vector",
+      label: "Attack Vector",
+      hint: "Link · Strike: win the firing line. Chain +2 to hit.",
+      role: "navigator",
+      chain: "strike",
+      kind: "link",
+      run: (s, c) => ({
+        state: log(bumpHandoff(s, { toHit: s.chain.handoff.toHit + 2 }), `${c.actor} swings to a clean vector — chain +2 to hit.`),
+        success: true,
+      }),
     },
     {
-      id: "range",
-      label: "Adjust range",
-      hint: "toggle close/long — shifts laser & missile effectiveness",
-      run: (s, c) => {
-        const range = s.range === "close" ? "long" : "close";
-        return log({ ...s, range }, `${c.actor} shifts to ${range} range.`);
+      id: "strafing-run",
+      label: "Strafing Run",
+      hint: "Finish · Strike: a fast pass. +1 damage per link.",
+      role: "navigator",
+      chain: "strike",
+      kind: "finish",
+      needsTarget: true,
+      run: (s, c, o) => attack(s, c, o, "balanced", PER_LINK_LIGHT),
+    },
+    {
+      id: "evasive",
+      label: "Evasive",
+      hint: "Link · Brace: pull from the kill zone. +2 ship defence.",
+      role: "navigator",
+      chain: "brace",
+      kind: "link",
+      run: (s, c) => ({
+        state: log({ ...s, ship: { ...s.ship, evasion: s.ship.evasion + 2 } }, `${c.actor} flies evasive — +2 defence.`),
+        success: true,
+      }),
+    },
+    {
+      id: "break-contact",
+      label: "Break Contact",
+      hint: "Finish · Brace: disengage to a safer band; +2 defence and shoot the gap.",
+      role: "navigator",
+      chain: "brace",
+      kind: "finish",
+      run: (s, c, o) => {
+        const i = Math.min(RANGES.length - 1, RANGES.indexOf(s.range) + 1);
+        const range = RANGES[i];
+        const ns = {
+          ...s,
+          range,
+          ship: { ...s.ship, evasion: s.ship.evasion + 2, negate: s.ship.negate + 1 },
+        };
+        return {
+          state: log(ns, `${c.actor} breaks contact to ${range} range — the run is spoiled. [chain ${Math.min(o.links, CHAIN_CAP)}]`),
+          success: true,
+        };
       },
     },
   ],
   engineer: [
     {
-      id: "shields",
-      label: "Reinforce shields",
-      power: 2,
-      hint: `+3 shields (overcap +${SHIELD_OVERCAP})`,
-      run: (s, c) =>
-        log(
-          {
-            ...spend(s, 2),
-            ship: { ...s.ship, shields: clamp(s.ship.shields + 3, 0, shieldCap(s)) },
-          },
-          `${c.actor} reinforces shields (+3).`
-        ),
+      id: "overcharge",
+      label: "Overcharge",
+      hint: "Link · Strike: route reactor power. Chain +1 effect step.",
+      role: "engineer",
+      chain: "strike",
+      kind: "link",
+      run: (s, c) => ({
+        state: log(bumpHandoff(s, { effectStep: s.chain.handoff.effectStep + 1 }), `${c.actor} overcharges the line — chain +1 effect.`),
+        success: true,
+      }),
     },
     {
-      id: "repair",
-      label: "Repair hull",
-      power: 3,
-      hint: "+3 hull (reliable)",
-      run: (s, c) => {
-        const next = spend(s, 3);
-        return log(
-          { ...next, ship: { ...next.ship, hull: clamp(next.ship.hull + 3, 0, next.ship.maxHull) } },
-          `${c.actor} patches the hull — +3 hull.`
-        );
+      id: "reactor-lance",
+      label: "Reactor Lance",
+      hint: "Finish · Strike: a system-frying blow. +2 damage per link; bypasses shields and Disables.",
+      role: "engineer",
+      chain: "strike",
+      kind: "finish",
+      needsTarget: true,
+      run: (s, c, o) => attack(s, c, o, "ap", PER_LINK_HEAVY, { disableOnHit: true }),
+    },
+    {
+      id: "reroute",
+      label: "Reroute",
+      hint: "Link · Brace: shunt power to shields. +2 shields.",
+      role: "engineer",
+      chain: "brace",
+      kind: "link",
+      run: (s, c) => ({
+        state: log(
+          { ...s, ship: { ...s.ship, shields: clamp(s.ship.shields + 2, 0, shieldCap(s)) } },
+          `${c.actor} reroutes to shields — +2.`
+        ),
+        success: true,
+      }),
+    },
+    {
+      id: "damage-control",
+      label: "Damage Control",
+      hint: "Finish · Brace: restore Hull or Shields. +1 per link.",
+      role: "engineer",
+      chain: "brace",
+      kind: "finish",
+      repairChoice: true,
+      run: (s, c, o) => {
+        const amount = 3 + PER_LINK_LIGHT * Math.min(o.links, CHAIN_CAP);
+        if (c.repair === "shield") {
+          return {
+            state: log(
+              { ...s, ship: { ...s.ship, shields: clamp(s.ship.shields + amount, 0, shieldCap(s)) } },
+              `${c.actor} runs damage control — +${amount} shields.`
+            ),
+            success: true,
+          };
+        }
+        return {
+          state: log(
+            { ...s, ship: { ...s.ship, hull: clamp(s.ship.hull + amount, 0, s.ship.maxHull) } },
+            `${c.actor} runs damage control — +${amount} hull.`
+          ),
+          success: true,
+        };
       },
     },
   ],
   sensor: [
     {
-      id: "scan",
-      label: "Scan / mark",
-      power: 1,
+      id: "target-lock",
+      label: "Target Lock",
+      hint: "Link · Strike: paint a weak point. Marks the target; chain ignores its shields and TN −2.",
+      role: "sensor",
+      chain: "strike",
+      kind: "link",
       needsTarget: true,
-      hint: "mark a target — crew get +2 to hit it",
       run: (s, c) => {
-        const next = spend(s, 1);
-        return {
-          ...next,
-          enemies: next.enemies.map((e) =>
-            e.id === c.targetId ? { ...e, conditions: addCond(e.conditions, "marked", 2) } : e
-          ),
-          log: [...next.log, `[R${s.round}] ${c.actor} marks ${enemyName(next, c.targetId)} — weak points exposed.`].slice(-100),
-        };
+        const ns = bumpHandoff(markEnemy(s, c.targetId, "marked", 2), {
+          ignoreShields: true,
+          tnDown: s.chain.handoff.tnDown + 2,
+        });
+        return { state: log(ns, `${c.actor} locks ${enemyName(ns, c.targetId)} — weak points exposed.`), success: true };
       },
     },
     {
-      id: "hack",
-      label: "Hack",
-      power: 2,
+      id: "killbox",
+      label: "Killbox",
+      hint: "Finish · Strike: certainty. Auto-Breach, crits on 19–20. +1 damage per link.",
+      role: "sensor",
+      chain: "strike",
+      kind: "finish",
       needsTarget: true,
-      hint: "roll vs target TN — on success, disable it (skips its next attack)",
-      run: (s, c) => {
-        const next = spend(s, 2);
-        const enemy = next.enemies.find((e) => e.id === c.targetId);
-        if (!enemy) return log(next, `${c.actor} hacks — no target.`);
-        const die = d20();
-        const total = die + next.ship.tier;
-        if (die === 20 || total >= enemy.tn) {
-          return {
-            ...next,
-            enemies: next.enemies.map((e) =>
-              e.id === enemy.id ? { ...e, conditions: addCond(e.conditions, "disabled", 1) } : e
-            ),
-            log: [...next.log, `[R${s.round}] ${c.actor} hacks ${enemy.name} — systems disabled, it can't fire next.`].slice(-100),
-          };
-        }
-        return log(next, `${c.actor} hacks ${enemy.name} — rolled ${total} vs ${enemy.tn}, rebuffed.`);
+      run: (s, c, o) => attack(s, c, o, "balanced", PER_LINK_LIGHT, { autoBreach: true, critRange: 19 }),
+    },
+    {
+      id: "blur",
+      label: "Blur",
+      hint: "Link · Brace: hack enemy optics. Incoming −2 this beat.",
+      role: "sensor",
+      chain: "brace",
+      kind: "link",
+      run: (s, c) => ({
+        state: log({ ...s, ship: { ...s.ship, conceal: s.ship.conceal + 2 } }, `${c.actor} blurs the ship — incoming −2.`),
+        success: true,
+      }),
+    },
+    {
+      id: "ghost",
+      label: "Ghost",
+      hint: "Finish · Brace: spoof the enemy. Negate one incoming hit, +1 per two links.",
+      role: "sensor",
+      chain: "brace",
+      kind: "finish",
+      run: (s, c, o) => {
+        const n = 1 + Math.floor(Math.min(o.links, CHAIN_CAP) / 2);
+        return {
+          state: log({ ...s, ship: { ...s.ship, negate: s.ship.negate + n } }, `${c.actor} ghosts the ship — ${n} incoming hit(s) will miss.`),
+          success: true,
+        };
       },
     },
   ],
   gunner: [
     {
-      id: "fire",
-      label: "Fire",
-      weapon: true,
+      id: "suppressing-volley",
+      label: "Suppressing Volley",
+      hint: "Link · Strike: pin the enemy. Chain TN −2 and chip damage.",
+      role: "gunner",
+      chain: "strike",
+      kind: "link",
       needsTarget: true,
-      hint: "roll d20 + Tier vs target TN; pick a weapon type",
       run: (s, c) => {
-        const type = c.weapon ?? "balanced";
-        return performAttack(spend(s, WEAPON_POWER[type]), c.actor, c.targetId ?? "", type);
+        const enemy = s.enemies.find((e) => e.id === c.targetId);
+        const chipped = enemy
+          ? s.enemies.map((e) => (e.id === enemy.id ? { ...e, hull: Math.max(0, e.hull - 1) } : e)).filter((e) => e.hull > 0)
+          : s.enemies;
+        const ns = bumpHandoff({ ...s, enemies: chipped }, { tnDown: s.chain.handoff.tnDown + 2 });
+        return { state: log(ns, `${c.actor} lays a suppressing volley — chain TN −2.`), success: true };
       },
     },
+    {
+      id: "killing-blow",
+      label: "Killing Blow",
+      hint: "Finish · Strike: the payoff. +2 damage per link; choose a weapon type.",
+      role: "gunner",
+      chain: "strike",
+      kind: "finish",
+      needsTarget: true,
+      weapon: true,
+      run: (s, c, o) => attack(s, c, o, c.weapon ?? "balanced", PER_LINK_HEAVY),
+    },
+    {
+      id: "point-defense",
+      label: "Point Defense",
+      hint: "Link · Brace: shoot down incoming ordnance. Negate one incoming hit.",
+      role: "gunner",
+      chain: "brace",
+      kind: "link",
+      run: (s, c) => ({
+        state: log({ ...s, ship: { ...s.ship, negate: s.ship.negate + 1 } }, `${c.actor} works point defense — one incoming hit will be intercepted.`),
+        success: true,
+      }),
+    },
+    {
+      id: "counter-volley",
+      label: "Counter-Volley",
+      hint: "Finish · Brace: turn defense to offense. +1 damage per link.",
+      role: "gunner",
+      chain: "brace",
+      kind: "finish",
+      needsTarget: true,
+      run: (s, c, o) => attack(s, c, o, "balanced", PER_LINK_LIGHT),
+    },
   ],
+};
+
+/** Generic Open for a commanderless table (any officer can take the captaincy). */
+const GENERIC_OPEN: Record<ChainKind, Ability> = {
+  strike: {
+    id: "generic-open-strike",
+    label: "Take the Lead",
+    hint: "Open the Strike (no Commander): chain +Tier to hit.",
+    role: "commander",
+    chain: "strike",
+    kind: "open",
+    run: (s, c) => ({
+      state: log(bumpHandoff(s, { toHit: s.chain.handoff.toHit + s.ship.tier }), `${c.actor} takes the lead — chain +${s.ship.tier} to hit.`),
+      success: true,
+    }),
+  },
+  brace: {
+    id: "generic-open-brace",
+    label: "Take the Lead",
+    hint: "Open the Brace (no Commander): +Tier ship defence.",
+    role: "commander",
+    chain: "brace",
+    kind: "open",
+    run: (s, c) => ({
+      state: log({ ...s, ship: { ...s.ship, evasion: s.ship.evasion + s.ship.tier } }, `${c.actor} takes the lead — +${s.ship.tier} defence.`),
+      success: true,
+    }),
+  },
 };
 
 function enemyName(s: BattleState, id?: string) {
   return s.enemies.find((e) => e.id === id)?.name ?? "the target";
 }
 
-/* --- phase + DM operations ---------------------------------------- */
-
-export function advancePhase(s: BattleState): BattleState {
-  const order: BattleState["phase"][] = ["start", "action", "reaction", "end"];
-  const i = order.indexOf(s.phase);
-  const nextPhase = order[(i + 1) % order.length];
-
-  if (nextPhase === "start") {
-    // new round: gains + clear round-scoped state
-    const roles = Object.fromEntries(
-      (Object.keys(s.roles) as RoleId[]).map((k) => [k, { ...s.roles[k], acted: false }])
-    ) as BattleState["roles"];
-    return log(
-      {
-        ...s,
-        round: s.round + 1,
-        phase: "start",
-        roles,
-        buffs: { attackMod: 0, dmgMod: 0 },
-        ship: {
-          ...s.ship,
-          evasion: 0,
-          momentum: clamp(s.ship.momentum + MOMENTUM_PER_ROUND, 0, s.ship.maxMomentum),
-          power: clamp(s.ship.power + POWER_PER_ROUND, 0, s.ship.maxPower),
-        },
-      },
-      `Round ${s.round + 1} — Start: +${MOMENTUM_PER_ROUND} Momentum, +${POWER_PER_ROUND} Power.`
-    );
-  }
-
-  if (nextPhase === "end") {
-    return resolveEnd({ ...s, phase: "end" });
-  }
-
-  return log({ ...s, phase: nextPhase }, `Phase: ${nextPhase}.`);
+function findAbility(roleId: RoleId, abilityId: string): Ability | undefined {
+  if (abilityId === GENERIC_OPEN.strike.id) return GENERIC_OPEN.strike;
+  if (abilityId === GENERIC_OPEN.brace.id) return GENERIC_OPEN.brace;
+  return ROLE_KIT[roleId].find((a) => a.id === abilityId);
 }
 
-/** End phase: tick conditions and resolve durations (ship + enemies). */
-function resolveEnd(s: BattleState): BattleState {
-  let state = s;
+/* --- what a given seat may do right now ---------------------------------- */
 
-  // ship burning
-  let shipHull = state.ship.hull;
-  if (hasCond(state.ship.conditions, "burning")) shipHull = Math.max(0, shipHull - 1);
-  const shipConditions = state.ship.conditions
-    .map((c) => ({ ...c, rounds: c.rounds - 1 }))
-    .filter((c) => c.rounds > 0);
+export function availableAbilities(s: BattleState, roleId: RoleId): Ability[] {
+  if (!s.active) return [];
+  if (s.beat !== "strike" && s.beat !== "brace") return [];
+  const chainKind: ChainKind = s.beat;
+  const kit = ROLE_KIT[roleId].filter((a) => a.chain === chainKind);
+  const ch = s.chain;
+  const acted = ch.acted.includes(roleId);
 
-  // enemy burning, then decay all conditions
-  const enemies = state.enemies
+  // Epic Chain — position dissolves; every officer Finishes once at full scale.
+  if (ch.epic) return acted ? [] : kit.filter((a) => a.kind === "finish");
+
+  // Chain not yet opened — someone must Open.
+  if (!ch.open) {
+    if (roleId === "commander") return kit.filter((a) => a.kind === "open");
+    if (!s.roles.commander.claimedBy) return [GENERIC_OPEN[chainKind]]; // commanderless
+    return [];
+  }
+
+  if (ch.done || acted || roleId === ch.opener) return [];
+  return kit.filter((a) => a.kind === "link" || a.kind === "finish");
+}
+
+/* --- applying an ability (handles all chain bookkeeping) ----------------- */
+
+export function applyAbility(s: BattleState, roleId: RoleId, abilityId: string, ctx: ActionCtx): BattleState {
+  const ability = findAbility(roleId, abilityId);
+  if (!ability) return s;
+  if (s.beat !== ability.chain) return s;
+
+  // Open
+  if (ability.kind === "open") {
+    if (s.chain.open) return s;
+    const base: BattleState = {
+      ...s,
+      chain: { ...freshChain(), kind: ability.chain, open: true, opener: roleId, acted: [roleId], length: 1 },
+    };
+    return ability.run(base, ctx, { links: 0, cutBonus: 0 }).state;
+  }
+
+  // Link / Finish require an open chain of the matching kind
+  if (!s.chain.open || s.chain.kind !== ability.chain || s.chain.done) return s;
+  if (s.chain.acted.includes(roleId) && !s.chain.epic) return s;
+
+  const links = s.chain.epic ? CHAIN_CAP : s.chain.length;
+
+  if (ability.kind === "link") {
+    const res = ability.run(s, ctx, { links, cutBonus: 0 });
+    return {
+      ...res.state,
+      chain: { ...res.state.chain, acted: [...res.state.chain.acted, roleId], length: res.state.chain.length + 1 },
+    };
+  }
+
+  // Finish
+  const claimedUnacted = (Object.keys(s.roles) as RoleId[]).filter(
+    (r) => s.roles[r].claimedBy && !s.chain.acted.includes(r) && r !== roleId
+  ).length;
+  const cut = !s.chain.epic && claimedUnacted > 0;
+  const res = ability.run(s, ctx, { links, cutBonus: cut ? CUT_BONUS : 0 });
+  let ns = {
+    ...res.state,
+    chain: { ...res.state.chain, acted: [...res.state.chain.acted, roleId], length: res.state.chain.length + 1 },
+  };
+
+  if (s.chain.epic) {
+    // Epic: many officers finish; the chain stays open until the GM advances.
+    return ns;
+  }
+
+  // Sync bookkeeping on a normal Finisher.
+  ns = { ...ns, chain: { ...ns.chain, done: true } };
+  if (res.success) {
+    const next = s.ship.sync + 1;
+    if (next >= SYNC_FOR_EPIC) {
+      ns = log({ ...ns, ship: { ...ns.ship, sync: 0, epicBanked: true } }, `✦ PERFECT SYNC — the crew banks an Epic Chain!`);
+    } else {
+      ns = log({ ...ns, ship: { ...ns.ship, sync: next } }, `Chain lands — Sync ${next}/${SYNC_FOR_EPIC}.`);
+    }
+  } else if (s.ship.sync > 0) {
+    ns = log({ ...ns, ship: { ...ns.ship, sync: 0 } }, `Finisher fell short — Sync resets.`);
+  }
+  if (cut) ns = log(ns, `(Cut — finished early for +${CUT_BONUS}.)`);
+  return ns;
+}
+
+/* --- the Commander unleashes a banked Epic Chain ------------------------- */
+
+export function unleashEpic(s: BattleState): BattleState {
+  if (!s.ship.epicBanked || (s.beat !== "strike" && s.beat !== "brace") || s.chain.open) return s;
+  const kind: ChainKind = s.beat;
+  const ns: BattleState = {
+    ...s,
+    ship: { ...s.ship, epicBanked: false },
+    chain: { ...freshChain(), kind, open: true, opener: null, acted: [], length: CHAIN_CAP, epic: true },
+  };
+  return log(ns, `★ EPIC ${kind.toUpperCase()} — all stations, as one! Every officer Finishes at full power.`);
+}
+
+/* --- beats --------------------------------------------------------------- */
+
+function beatBanner(beat: BattleState["beat"]): string {
+  switch (beat) {
+    case "strike":
+      return "Strike Chain — the Commander opens. Build the combo.";
+    case "brace":
+      return "Brace Chain — the enemy moves. Weather it together.";
+    case "cooldown":
+      return "Cool Down — conditions resolve.";
+    default:
+      return "Spool Up.";
+  }
+}
+
+function enterSpool(s: BattleState): BattleState {
+  const round = s.round + 1;
+  const shields = clamp(s.ship.shields + s.ship.shieldRegen, 0, s.ship.maxShields);
+  return log(
+    {
+      ...s,
+      round,
+      beat: "spool",
+      chain: freshChain(),
+      ship: { ...s.ship, shields, evasion: 0, conceal: 0, negate: 0 },
+    },
+    `Round ${round} — Spool Up: shields regen +${s.ship.shieldRegen}.`
+  );
+}
+
+export function advanceBeat(s: BattleState): BattleState {
+  const i = BEATS.indexOf(s.beat);
+  const next = BEATS[(i + 1) % BEATS.length];
+  if (next === "spool") return enterSpool(s);
+  if (next === "cooldown") return resolveCooldown({ ...s, beat: "cooldown" });
+  return log({ ...s, beat: next, chain: freshChain() }, beatBanner(next));
+}
+
+function resolveCooldown(s: BattleState): BattleState {
+  let shipHull = s.ship.hull;
+  const shipBurning = hasCond(s.ship.conditions, "burning");
+  if (shipBurning) shipHull = Math.max(0, shipHull - 1);
+  const shipConditions = s.ship.conditions.map((c) => ({ ...c, rounds: c.rounds - 1 })).filter((c) => c.rounds > 0);
+
+  let burnedEnemy = false;
+  const enemies = s.enemies
     .map((e) => {
       let hull = e.hull;
-      if (hasCond(e.conditions, "burning")) hull = Math.max(0, hull - 1);
-      const conditions = e.conditions
-        .map((c) => ({ ...c, rounds: c.rounds - 1 }))
-        .filter((c) => c.rounds > 0);
+      if (hasCond(e.conditions, "burning")) {
+        hull = Math.max(0, hull - 1);
+        burnedEnemy = true;
+      }
+      const conditions = e.conditions.map((c) => ({ ...c, rounds: c.rounds - 1 })).filter((c) => c.rounds > 0);
       return { ...e, hull, conditions };
     })
     .filter((e) => e.hull > 0);
 
-  const burned =
-    hasCond(state.ship.conditions, "burning") ||
-    state.enemies.some((e) => hasCond(e.conditions, "burning"));
-  state = {
-    ...state,
-    ship: { ...state.ship, hull: shipHull, conditions: shipConditions },
+  let state: BattleState = {
+    ...s,
+    ship: { ...s.ship, hull: shipHull, conditions: shipConditions },
     enemies,
   };
-  if (burned) state = log(state, "End: burning takes 1 damage.");
-  return log(state, "End: conditions resolved.");
+  if (shipBurning || burnedEnemy) state = log(state, "Cool Down: burning takes its toll.");
+  return log(state, "Cool Down: conditions tick down.");
 }
 
-/** DM: every enemy rolls an attack against the ship. */
+/* --- GM: the enemy turn (resolved during the Brace beat) ----------------- */
+
 export function enemiesFire(s: BattleState): BattleState {
   let state = s;
   const defence = SHIP_DEFENCE_BASE + state.ship.evasion;
@@ -395,26 +657,60 @@ export function enemiesFire(s: BattleState): BattleState {
       continue;
     }
     const die = d20();
-    const total = die + e.tier;
-    if (die === 20 || total >= defence) {
-      const crit = die === 20;
-      let dmg = e.atk + degrees(total, defence);
-      if (crit) dmg *= 2;
-      const breached = hasCond(state.ship.conditions, "breached");
-      const res = resolveDamage(state.ship.shields, state.ship.hull, "balanced", dmg, breached);
-      state = {
-        ...state,
-        ship: {
-          ...state.ship,
-          shields: res.shields,
-          hull: res.hull,
-          conditions: crit ? addCond(state.ship.conditions, "burning", 2) : state.ship.conditions,
-        },
-      };
-      state = log(state, `${e.name} fires — rolled ${total} vs ${defence}${crit ? " CRIT" : ""}: ${res.note}.`);
-    } else {
-      state = log(state, `${e.name} fires — rolled ${total} vs ${defence}, miss.`);
+    const total = die + e.tier - state.ship.conceal;
+    const crit = die === 20;
+    if (!crit && total < defence) {
+      state = log(state, `${e.name} fires — ${total} vs ${defence}, miss.`);
+      continue;
     }
+    if (state.ship.negate > 0) {
+      state = log({ ...state, ship: { ...state.ship, negate: state.ship.negate - 1 } }, `${e.name} fires — intercepted! (point defense / ghost)`);
+      continue;
+    }
+    let dmg = e.atk + degrees(total, defence);
+    if (crit) dmg *= 2;
+    const breached = hasCond(state.ship.conditions, "breached");
+    const res = resolveDamage(state.ship.shields, state.ship.hull, "balanced", dmg, breached);
+    state = {
+      ...state,
+      ship: {
+        ...state.ship,
+        shields: res.shields,
+        hull: res.hull,
+        conditions: crit ? addCond(state.ship.conditions, "burning", 2) : state.ship.conditions,
+      },
+    };
+    state = log(state, `${e.name} fires — ${total} vs ${defence}${crit ? " CRIT" : ""}: ${res.note}.`);
   }
   return state;
+}
+
+/* --- GM: commence / end -------------------------------------------------- */
+
+export function commence(s: BattleState): BattleState {
+  const t = SHIP_BY_TIER[s.ship.tier] ?? SHIP_BY_TIER[1];
+  return log(
+    {
+      ...s,
+      active: true,
+      round: 1,
+      beat: "strike",
+      chain: freshChain(),
+      ship: {
+        ...s.ship,
+        shields: Math.min(s.ship.maxShields, Math.max(s.ship.shields, t.shields)),
+        evasion: 0,
+        conceal: 0,
+        negate: 0,
+        sync: 0,
+        epicBanked: false,
+        extendUsed: false,
+      },
+    },
+    "Battle commences — crew to stations. Strike Chain: the Commander opens."
+  );
+}
+
+export function endBattle(s: BattleState): BattleState {
+  return log({ ...s, active: false, chain: freshChain() }, "The engagement ends.");
 }
