@@ -48,6 +48,7 @@ function condTag(c: Condition) {
     marked: "border-[#cc88ff]/50 text-[#cc88ff]",
     breached: "border-[#ff9f40]/50 text-[#ff9f40]",
     burning: "border-[#ff6b6b]/50 text-[#ff6b6b]",
+    disabled: "border-[#7fe0ff]/50 text-[#7fe0ff]",
   };
   return (
     <span key={c.kind} className={`rounded border px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider ${styles[c.kind]}`}>
@@ -179,7 +180,7 @@ export default function BattleRoom() {
                 <span className="text-[10px] uppercase tracking-[0.16em] text-[#c9a84c]/50">
                   {state.ship.evasion > 0 && `+${state.ship.evasion} def · `}
                   {state.buffs.attackMod > 0 && `+${state.buffs.attackMod} atk · `}
-                  {state.buffs.nextHitBonus > 0 && `+${state.buffs.nextHitBonus} next hit`}
+                  {state.buffs.dmgMod > 0 && `+${state.buffs.dmgMod} dmg`}
                 </span>
               </div>
               <div className="grid gap-3 sm:grid-cols-4">

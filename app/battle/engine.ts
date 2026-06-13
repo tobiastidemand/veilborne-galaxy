@@ -117,7 +117,8 @@ function performAttack(
   const breached = hasCond(enemy.conditions, "breached");
   const rangeMod =
     type === "laser" ? (s.range === "close" ? 1 : -1) : type === "missile" ? (s.range === "long" ? 1 : -1) : 0;
-  const total = die + s.ship.tier + s.buffs.attackMod + (marked ? 2 : 0) + rangeMod;
+  const accBonus = type === "balanced" ? 2 : 0; // Balanced is the reliable, accurate option
+  const total = die + s.ship.tier + s.buffs.attackMod + (marked ? 2 : 0) + rangeMod + accBonus;
   const tn = enemy.tn - (breached ? 2 : 0);
   const label = DAMAGE_LABEL[type];
 
@@ -135,7 +136,7 @@ function performAttack(
     return log(s, `${actor} fires ${label} at ${enemy.name} — rolled ${total} vs ${tn}, miss.`);
   }
 
-  let dmg = DAMAGE_BASE[type] + s.buffs.nextHitBonus + degrees(total, tn);
+  let dmg = DAMAGE_BASE[type] + s.buffs.dmgMod + degrees(total, tn);
   if (crit) dmg *= 2;
   const res = resolveDamage(enemy.shields, enemy.hull, type, dmg, breached);
   const enemies = kill(
@@ -157,7 +158,7 @@ function performAttack(
   );
   const dead = res.hull <= 0;
   return log(
-    { ...s, enemies, buffs: { ...s.buffs, nextHitBonus: 0 } },
+    { ...s, enemies },
     dead
       ? `${actor} destroys ${enemy.name}! (${label}, rolled ${total}${crit ? " CRIT" : ""})`
       : `${actor} hits ${enemy.name} with ${label} — rolled ${total}${crit ? " CRIT" : ""}: ${res.note}.`
@@ -180,14 +181,14 @@ export const ROLE_ACTIONS: Record<RoleId, ActionDef[]> = {
         ),
     },
     {
-      id: "coordinate",
-      label: "Coordinated strike",
-      momentum: 3,
-      hint: "the next weapon hit deals +2 damage",
+      id: "focus",
+      label: "Focus fire",
+      momentum: 1,
+      hint: "+3 damage to every weapon hit this round",
       run: (s, c) =>
         log(
-          { ...spend(s, 0, 3), buffs: { ...s.buffs, nextHitBonus: s.buffs.nextHitBonus + 2 } },
-          `${c.actor} calls a coordinated strike — next hit +2 damage.`
+          { ...spend(s, 0, 1), buffs: { ...s.buffs, dmgMod: s.buffs.dmgMod + 3 } },
+          `${c.actor} calls focused fire — +3 damage this round.`
         ),
     },
     {
@@ -240,19 +241,13 @@ export const ROLE_ACTIONS: Record<RoleId, ActionDef[]> = {
       id: "repair",
       label: "Repair hull",
       power: 3,
-      hint: "roll vs TN 12 — +3 hull (crit +6)",
+      hint: "+3 hull (reliable)",
       run: (s, c) => {
         const next = spend(s, 3);
-        const die = d20();
-        const total = die + next.ship.tier;
-        if (die === 20 || total >= 12) {
-          const heal = die === 20 ? 6 : 3;
-          return log(
-            { ...next, ship: { ...next.ship, hull: clamp(next.ship.hull + heal, 0, next.ship.maxHull) } },
-            `${c.actor} repairs the hull — rolled ${total}${die === 20 ? " (CRIT)" : ""}, +${heal} hull.`
-          );
-        }
-        return log(next, `${c.actor} attempts repairs — rolled ${total} vs 12, no effect.`);
+        return log(
+          { ...next, ship: { ...next.ship, hull: clamp(next.ship.hull + 3, 0, next.ship.maxHull) } },
+          `${c.actor} patches the hull — +3 hull.`
+        );
       },
     },
   ],
@@ -279,7 +274,7 @@ export const ROLE_ACTIONS: Record<RoleId, ActionDef[]> = {
       label: "Hack",
       power: 2,
       needsTarget: true,
-      hint: "roll vs target TN — on success, breach its shields (−2 def)",
+      hint: "roll vs target TN — on success, disable it (skips its next attack)",
       run: (s, c) => {
         const next = spend(s, 2);
         const enemy = next.enemies.find((e) => e.id === c.targetId);
@@ -290,9 +285,9 @@ export const ROLE_ACTIONS: Record<RoleId, ActionDef[]> = {
           return {
             ...next,
             enemies: next.enemies.map((e) =>
-              e.id === enemy.id ? { ...e, conditions: addCond(e.conditions, "breached", 2) } : e
+              e.id === enemy.id ? { ...e, conditions: addCond(e.conditions, "disabled", 1) } : e
             ),
-            log: [...next.log, `[R${s.round}] ${c.actor} hacks ${enemy.name} — rolled ${total}, shields breached.`].slice(-100),
+            log: [...next.log, `[R${s.round}] ${c.actor} hacks ${enemy.name} — systems disabled, it can't fire next.`].slice(-100),
           };
         }
         return log(next, `${c.actor} hacks ${enemy.name} — rolled ${total} vs ${enemy.tn}, rebuffed.`);
@@ -336,7 +331,7 @@ export function advancePhase(s: BattleState): BattleState {
         round: s.round + 1,
         phase: "start",
         roles,
-        buffs: { attackMod: 0, nextHitBonus: 0 },
+        buffs: { attackMod: 0, dmgMod: 0 },
         ship: {
           ...s.ship,
           evasion: 0,
@@ -395,6 +390,10 @@ export function enemiesFire(s: BattleState): BattleState {
   let state = s;
   const defence = SHIP_DEFENCE_BASE + state.ship.evasion;
   for (const e of state.enemies) {
+    if (hasCond(e.conditions, "disabled")) {
+      state = log(state, `${e.name} is disabled — holds fire.`);
+      continue;
+    }
     const die = d20();
     const total = die + e.tier;
     if (die === 20 || total >= defence) {

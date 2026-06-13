@@ -8,7 +8,7 @@ export type RoleId =
 export type Phase = "start" | "action" | "reaction" | "end";
 export type DamageType = "balanced" | "laser" | "missile" | "ap";
 export type Range = "close" | "long";
-export type ConditionKind = "marked" | "breached" | "burning";
+export type ConditionKind = "marked" | "breached" | "burning" | "disabled";
 
 export interface Condition {
   kind: ConditionKind;
@@ -50,8 +50,8 @@ export interface BattleState {
     evasion: number; // round-scoped, raises defence
     conditions: Condition[];
   };
-  // round-scoped tactical buffs from the Commander / Engineer
-  buffs: { attackMod: number; nextHitBonus: number };
+  // round-scoped tactical buffs from the Commander (cleared each Start)
+  buffs: { attackMod: number; dmgMod: number };
   roles: Record<RoleId, RoleSlot>;
   enemies: Enemy[];
   log: string[];
@@ -120,7 +120,7 @@ export function defaultBattle(): BattleState {
       evasion: 0,
       conditions: [],
     },
-    buffs: { attackMod: 0, nextHitBonus: 0 },
+    buffs: { attackMod: 0, dmgMod: 0 },
     roles: {
       commander: { claimedBy: null, acted: false },
       navigator: { claimedBy: null, acted: false },
