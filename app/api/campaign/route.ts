@@ -95,6 +95,11 @@ export async function POST(req: NextRequest) {
     trail: strings(body.trail),
     updatedAt: Date.now(),
   };
-  await write(state);
+  try {
+    await write(state);
+  } catch {
+    // e.g. file store on a read-only serverless FS with no KV configured
+    return NextResponse.json({ error: "store unavailable" }, { status: 503 });
+  }
   return NextResponse.json(state);
 }
