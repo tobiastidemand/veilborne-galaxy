@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Billboard, Html } from "@react-three/drei";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import gsap from "gsap";
 
-import { CHAIN_MARKER, type StarSystemData } from "../data";
+import { type StarSystemData } from "../data";
 import { makeBeamTexture, makeRadialTexture, makeRingTexture } from "../textures";
 import { useReducedMotion } from "../useReducedMotion";
 import { NO_RAYCAST } from "./shared";
@@ -198,7 +198,6 @@ export function StarSystem({
     [system]
   );
 
-  const marker = CHAIN_MARKER[system.chain.level];
   const isBlackHole = system.kind === "blackhole";
 
   useFrame(({ clock }) => {
@@ -275,20 +274,6 @@ export function StarSystem({
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       </group>
-
-      {marker && (
-        <Billboard position={[0, system.size * 1.4 + 1.1, 0]}>
-          <Html center transform={false} zIndexRange={[10, 0]}>
-            <div
-              className="pointer-events-none select-none text-[15px] leading-none drop-shadow-[0_0_6px_rgba(0,0,0,0.9)]"
-              style={{ color: marker.color, opacity: marker.opacity }}
-              title={`Aureate Chain: ${system.chain.level}`}
-            >
-              ⛓
-            </div>
-          </Html>
-        </Billboard>
-      )}
 
       {hovered && !focused && (
         <Html

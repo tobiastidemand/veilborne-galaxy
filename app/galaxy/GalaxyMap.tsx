@@ -332,7 +332,13 @@ export default function GalaxyMap() {
               <span>Arcane Survey Incomplete</span>
             </p>
           </div>
-          <div className="hidden text-right font-display text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c9a84c]/55 sm:block">
+          {/* Chart byline — hidden while a panel is open so it never sits
+              over the right-hand survey panel. */}
+          <div
+            className={`hidden text-right font-display text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c9a84c]/55 ${
+              focusSystemId ? "" : "sm:block"
+            }`}
+          >
             <div>Galactic Chart № 7 of ∞</div>
             <div>Survey Vessel · Astral Cartographer</div>
             <div>
