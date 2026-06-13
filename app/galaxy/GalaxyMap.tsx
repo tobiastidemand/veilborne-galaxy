@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Canvas } from "@react-three/fiber";
 import gsap from "gsap";
 
@@ -535,6 +536,14 @@ export default function GalaxyMap() {
           onClose={() => setDmConsoleOpen(false)}
         />
       )}
+
+      {/* battle stations */}
+      <Link
+        href="/battle"
+        className="pointer-events-auto fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded border border-[#ff6b6b]/40 bg-[#07051a]/80 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-[0.22em] text-[#ff6b6b]/80 backdrop-blur-sm transition-colors hover:text-[#ff6b6b]"
+      >
+        ⚔ Battle Stations
+      </Link>
 
       {/* instructions — only in the wide galaxy view */}
       {!focusSystemId && (
