@@ -788,7 +788,7 @@ function PulsarBeam({ system }: { system: StarSystemData }) {
   return (
     <group ref={beamRef} rotation={[0.25, 0, 0.18]}>
       <mesh rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.07, 0.07, 34, 8, 1, true]} />
+        <cylinderGeometry args={[0.07, 0.07, 20, 8, 1, true]} />
         <meshBasicMaterial
           color={system.color}
           transparent
@@ -798,7 +798,7 @@ function PulsarBeam({ system }: { system: StarSystemData }) {
         />
       </mesh>
       <mesh rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.22, 0.22, 34, 8, 1, true]} />
+        <cylinderGeometry args={[0.22, 0.22, 20, 8, 1, true]} />
         <meshBasicMaterial
           color={system.color}
           transparent
