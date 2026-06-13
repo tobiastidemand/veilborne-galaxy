@@ -54,6 +54,7 @@ export interface Campaign {
   isDiscovered: (id: string) => boolean;
   toggleDiscovered: (id: string) => void;
   setParty: (id: string) => void;
+  reset: () => void;
 }
 
 /**
@@ -115,6 +116,13 @@ export function useCampaign(): Campaign {
     setTrail((prev) => (prev[prev.length - 1] === id ? prev : [...prev, id]));
   }, []);
 
+  // Wipe progress back to the seeded starting state.
+  const reset = useCallback(() => {
+    setDiscovered(new Set(SEED_DISCOVERED));
+    setPartyState(null);
+    setTrail([]);
+  }, []);
+
   return {
     dmMode,
     discovered,
@@ -123,5 +131,6 @@ export function useCampaign(): Campaign {
     isDiscovered,
     toggleDiscovered,
     setParty,
+    reset,
   };
 }

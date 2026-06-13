@@ -99,7 +99,15 @@ function Divider() {
 }
 
 /** Collapsible cartographer's key. Self-contained so toggling never re-renders the scene. */
-function Legend({ hideOnMobile }: { hideOnMobile: boolean }) {
+function Legend({
+  hideOnMobile,
+  charted,
+  total,
+}: {
+  hideOnMobile: boolean;
+  charted: number;
+  total: number;
+}) {
   // Open by default on desktop, collapsed on phones to stay out of the way.
   const [open, setOpen] = useState(
     () => window.matchMedia("(min-width: 768px)").matches
@@ -119,12 +127,17 @@ function Legend({ hideOnMobile }: { hideOnMobile: boolean }) {
         <span className="whitespace-nowrap font-display text-[11px] font-bold uppercase tracking-[0.22em] text-[#f0d080]">
           Cartographer&apos;s Key
         </span>
-        <span
-          className={`text-xs text-[#c9a84c] transition-transform duration-300 ${
-            open ? "" : "-rotate-90"
-          }`}
-        >
-          ▾
+        <span className="flex items-center gap-2">
+          <span className="font-display text-[10px] font-bold tracking-[0.12em] text-[#c9a84c]/70">
+            {charted}/{total}
+          </span>
+          <span
+            className={`text-xs text-[#c9a84c] transition-transform duration-300 ${
+              open ? "" : "-rotate-90"
+            }`}
+          >
+            ▾
+          </span>
         </span>
       </button>
 
@@ -274,6 +287,19 @@ export default function GalaxyMap() {
     }
   }, [focusSystemId]);
 
+  const charted = SYSTEMS.filter((s) => campaign.discovered.has(s.id)).length;
+
+  const handleReset = useCallback(() => {
+    if (
+      window.confirm(
+        "Reset campaign? This clears all charted systems, the party location and its route."
+      )
+    ) {
+      campaign.reset();
+      goToGalaxy();
+    }
+  }, [campaign, goToGalaxy]);
+
   const panelSystem = focusSystemId ? systemById(focusSystemId) : null;
   const systemPanelOpen = view.mode === "system" && systemArrived;
 
@@ -378,7 +404,21 @@ export default function GalaxyMap() {
         </button>
       )}
 
-      <Legend hideOnMobile={focusSystemId !== null} />
+      <Legend
+        hideOnMobile={focusSystemId !== null}
+        charted={charted}
+        total={SYSTEMS.length}
+      />
+
+      {/* DM-only: wipe campaign progress */}
+      {dmMode && (
+        <button
+          onClick={handleReset}
+          className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded border border-[#ff9f40]/40 bg-[#07051a]/80 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-[0.22em] text-[#ff9f40]/80 backdrop-blur-sm transition-colors hover:text-[#ff9f40]"
+        >
+          ↺ Reset campaign
+        </button>
+      )}
 
       {/* instructions — only in the wide galaxy view */}
       {!focusSystemId && (
