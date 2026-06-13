@@ -213,19 +213,21 @@ function DMConsole({
       <div className="flex items-center justify-between px-4 pb-1 pt-3">
         <span className="flex items-center gap-2 font-display text-[11px] font-bold uppercase tracking-[0.22em] text-[#7fe0ff]">
           DM Console
-          <span
-            title={
-              campaign.shared
-                ? "Live — changes sync to players"
-                : "Local only — players won't see changes"
-            }
-            className={`h-1.5 w-1.5 rounded-full ${
-              campaign.shared ? "bg-[#7fff9f]" : "bg-[#ff9f40]"
-            }`}
-          />
-          <span className="text-[8px] font-normal tracking-[0.18em] text-[#e9e2d0]/40">
-            {campaign.shared ? "LIVE" : "LOCAL"}
-          </span>
+          {(() => {
+            const status = campaign.denied
+              ? { dot: "bg-[#e84daa]", label: "DENIED", title: "Writes rejected — append ?key=<token> to the URL" }
+              : campaign.shared
+                ? { dot: "bg-[#7fff9f]", label: "LIVE", title: "Live — changes sync to players" }
+                : { dot: "bg-[#ff9f40]", label: "LOCAL", title: "Local only — players won't see changes" };
+            return (
+              <>
+                <span title={status.title} className={`h-1.5 w-1.5 rounded-full ${status.dot}`} />
+                <span className="text-[8px] font-normal tracking-[0.18em] text-[#e9e2d0]/40">
+                  {status.label}
+                </span>
+              </>
+            );
+          })()}
         </span>
         <button
           onClick={onClose}
