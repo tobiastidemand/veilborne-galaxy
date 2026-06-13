@@ -33,7 +33,8 @@ export function useCameraFly(
       kill();
 
       const target = new THREE.Vector3(...position);
-      const distance = Math.max(8, Math.min(12, size * 5));
+      // Far enough to frame a system's full (possibly crowded) body shell.
+      const distance = Math.min(15, Math.max(10.5, size * 4 + 7.5));
       const dir = camera.position.clone().sub(target);
       if (dir.lengthSq() < 0.001) dir.set(0, 0.4, 1);
       dir.normalize();

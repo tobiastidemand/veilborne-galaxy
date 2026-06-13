@@ -11,6 +11,7 @@ import {
   CHAIN_MARKER,
   JUMP_LANES,
   SYSTEMS,
+  getSystemBodies,
   systemById,
   type BodyKind,
   type StarSystemData,
@@ -218,32 +219,40 @@ const BODY_REACH: Record<BodyKind, number> = {
 };
 
 function buildBodies(system: StarSystemData): BodyConfig[] {
-  return system.bodies.slice(0, 7).map((body, i) => {
+  const bodies = getSystemBodies(system);
+  const n = bodies.length;
+  // Spread bodies across a fixed shell regardless of count, so a crowded
+  // system still frames within the focused camera distance.
+  const inner = system.size * 1.6 + 1.1;
+  const span = 5.0;
+
+  return bodies.map((body, i) => {
     const kind = body.kind ?? "planet";
     const style = PLANET_STYLES[i % PLANET_STYLES.length];
     const seed = hashSeed(system.id + ":" + body.name);
-    const rand = (n: number) => ((seed >>> (n * 3)) % 1000) / 1000;
-    const isPlanet = kind === "planet";
+    const rand = (k: number) => ((seed >>> (k * 3)) % 1000) / 1000;
+    const planet = kind === "planet";
     const atmosphere = new THREE.Color(body.color)
       .lerp(new THREE.Color("#ffffff"), 0.5)
       .getStyle();
+    const frac = n > 1 ? i / (n - 1) : 0;
     return {
       body,
       kind,
       seed,
       style,
       atmosphere,
-      map: isPlanet ? makePlanetTexture(body.color, seed, style) : null,
+      map: planet ? makePlanetTexture(body.color, seed, style) : null,
       clouds:
-        isPlanet && style === "terran" ? makeCloudTexture(seed + 17) : null,
-      size: 0.24 + (i % 3) * 0.07,
-      radius: system.size * 2.1 + 1.4 + i * 1.3,
+        planet && style === "terran" ? makeCloudTexture(seed + 17) : null,
+      size: (body.synthetic ? 0.19 : 0.24) + (i % 3) * 0.06,
+      radius: inner + frac * span + (rand(4) - 0.5) * 0.3,
       speed: 0.4 / (1 + i * 0.32),
       phase: i * 1.7,
-      bob: (i % 2 === 0 ? 1 : -1) * 0.12 * i,
+      bob: (i % 2 === 0 ? 1 : -1) * (0.12 + (i % 3) * 0.08),
       spin: 0.12 + rand(1) * 0.25,
       axialTilt: (rand(2) - 0.5) * 0.7,
-      ring: isPlanet && style === "gas" && rand(3) > 0.45,
+      ring: planet && style === "gas" && rand(3) > 0.45,
     };
   });
 }

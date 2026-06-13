@@ -30,6 +30,8 @@ export interface CelestialBody {
   color: string;
   highlight?: boolean;
   kind?: BodyKind;
+  /** True for generated "uncharted" bodies that pad a system to its stated counts. */
+  synthetic?: boolean;
 }
 
 export interface StarSystemData {
@@ -437,3 +439,55 @@ export const JUMP_LANES: [string, string][] = [
 
 export const systemById = (id: string) =>
   SYSTEMS.find((s) => s.id === id)!;
+
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
+const FILLER_WORLD_COLORS = ["#6b7a8c", "#7c6f63", "#5e7a6e", "#84766b", "#6a6a82"];
+const FILLER_ANOMALY_COLORS = ["#9a5fb0", "#5f7fb0", "#7a5fa0", "#8a6f9a"];
+
+// Built once per system; identities stay stable so panels don't thrash.
+const bodyCache = new Map<string, CelestialBody[]>();
+
+const isPlanet = (b: CelestialBody) => (b.kind ?? "planet") === "planet";
+
+/**
+ * The full body list for a system: the named, notable bodies plus generated
+ * "uncharted" filler so the count of planets and anomalies on screen matches
+ * the system's stated `planets` / `anomalies` figures. Named non-planet bodies
+ * (stations, derelicts, the black-hole fragments, etc.) count as anomalies.
+ */
+export function getSystemBodies(system: StarSystemData): CelestialBody[] {
+  const cached = bodyCache.get(system.id);
+  if (cached) return cached;
+
+  const named = system.bodies;
+  const namedPlanets = named.filter(isPlanet).length;
+  const namedAnomalies = named.length - namedPlanets;
+  const fillerPlanets = Math.max(0, system.planets - namedPlanets);
+  const fillerAnomalies = Math.max(0, system.anomalies - namedAnomalies);
+
+  const extra: CelestialBody[] = [];
+  for (let i = 0; i < fillerPlanets; i++) {
+    extra.push({
+      name: `Uncharted World ${ROMAN[i] ?? i + 1}`,
+      description:
+        "Detected on long-range scans; no detailed survey on record.",
+      color: FILLER_WORLD_COLORS[i % FILLER_WORLD_COLORS.length],
+      kind: "planet",
+      synthetic: true,
+    });
+  }
+  for (let i = 0; i < fillerAnomalies; i++) {
+    extra.push({
+      name: `Unmapped Anomaly ${ROMAN[i] ?? i + 1}`,
+      description:
+        "Anomalous readings; classification pending Arcane Survey review.",
+      color: FILLER_ANOMALY_COLORS[i % FILLER_ANOMALY_COLORS.length],
+      kind: "anomaly",
+      synthetic: true,
+    });
+  }
+
+  const result = [...named, ...extra];
+  bodyCache.set(system.id, result);
+  return result;
+}

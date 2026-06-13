@@ -7,7 +7,7 @@ import gsap from "gsap";
 import GalaxyScene from "./GalaxyScene";
 import SystemPanel from "./SystemPanel";
 import PlanetPanel from "./PlanetPanel";
-import { SYSTEMS, systemById } from "./data";
+import { SYSTEMS, getSystemBodies, systemById } from "./data";
 import { HOME_CAMERA } from "./useCameraFly";
 
 /**
@@ -91,8 +91,9 @@ export default function GalaxyMap() {
   const selectedPlanet = view.mode === "planet" ? view.bodyName : null;
   const planetBody =
     view.mode === "planet"
-      ? systemById(view.systemId).bodies.find((b) => b.name === view.bodyName) ??
-        null
+      ? getSystemBodies(systemById(view.systemId)).find(
+          (b) => b.name === view.bodyName
+        ) ?? null
       : null;
   const planetSystemName =
     view.mode === "planet" ? systemById(view.systemId).name : "";

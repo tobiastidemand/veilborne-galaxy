@@ -6,6 +6,7 @@ import gsap from "gsap";
 import {
   CHAIN_MARKER,
   THREAT_STYLE,
+  getSystemBodies,
   type StarSystemData,
 } from "./data";
 
@@ -54,6 +55,9 @@ export default function SystemPanel({
     ? CHAIN_MARKER[shown.chain.level] ?? { color: "#9a9a9a", opacity: 0.7 }
     : null;
   const threat = shown ? THREAT_STYLE[shown.threat] : null;
+  const uncharted = shown
+    ? getSystemBodies(shown).filter((b) => b.synthetic).length
+    : 0;
 
   return (
     <aside
@@ -105,7 +109,7 @@ export default function SystemPanel({
 
           <section>
             <h3 className="mb-2 font-display text-xs font-bold tracking-[0.25em] text-[#c9a84c]">
-              CELESTIAL BODIES
+              CHARTED BODIES
             </h3>
             <ul className="flex flex-col gap-2.5">
               {shown.bodies.map((body) => (
@@ -131,6 +135,12 @@ export default function SystemPanel({
                 </li>
               ))}
             </ul>
+            {uncharted > 0 && (
+              <p className="mt-2.5 text-[11px] italic leading-snug text-white/35">
+                + {uncharted} uncharted{" "}
+                {uncharted === 1 ? "body" : "bodies"} detected · survey pending
+              </p>
+            )}
           </section>
 
           <section className="flex items-center gap-3">
