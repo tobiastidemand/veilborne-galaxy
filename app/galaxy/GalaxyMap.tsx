@@ -9,6 +9,7 @@ import SystemPanel from "./SystemPanel";
 import PlanetPanel from "./PlanetPanel";
 import { CanvasErrorBoundary } from "./CanvasErrorBoundary";
 import { usePrefersReducedMotion } from "./useReducedMotion";
+import { useCampaign } from "./useCampaign";
 import { SYSTEMS, getSystemBodies, systemById } from "./data";
 import { HOME_CAMERA } from "./useCameraFly";
 
@@ -198,13 +199,21 @@ export default function GalaxyMap() {
 
   const backRef = useRef<HTMLButtonElement>(null);
 
+  const campaign = useCampaign();
+  const { dmMode, isDiscovered } = campaign;
+
   const focusSystemId = view.mode === "galaxy" ? null : view.systemId;
 
-  const selectSystem = useCallback((id: string) => {
-    setSystemArrived(false);
-    setView({ mode: "system", systemId: id });
-    setFlightNonce((n) => n + 1);
-  }, []);
+  const selectSystem = useCallback(
+    (id: string) => {
+      // Players can only survey charted systems; DMs can survey anything.
+      if (!dmMode && !isDiscovered(id)) return;
+      setSystemArrived(false);
+      setView({ mode: "system", systemId: id });
+      setFlightNonce((n) => n + 1);
+    },
+    [dmMode, isDiscovered]
+  );
 
   const selectPlanet = useCallback((systemId: string, bodyName: string) => {
     // Camera stays parked on the system; swapping panels is all that happens.
@@ -307,6 +316,10 @@ export default function GalaxyMap() {
             selectedPlanet={selectedPlanet}
             flightNonce={flightNonce}
             reducedMotion={reducedMotion}
+            discovered={campaign.discovered}
+            party={campaign.party}
+            trail={campaign.trail}
+            dmMode={dmMode}
             onSelectSystem={selectSystem}
             onSelectPlanet={selectPlanet}
             onArrive={handleArrive}
@@ -323,6 +336,11 @@ export default function GalaxyMap() {
           <div>
             <h1 className="font-title text-lg font-black tracking-[0.14em] text-[#f0d080] drop-shadow-[0_0_18px_rgba(240,208,128,0.25)] sm:text-2xl sm:tracking-[0.16em]">
               The Veilborn Galaxy
+              {dmMode && (
+                <span className="ml-2 align-middle rounded border border-[#7fe0ff]/50 px-1.5 py-0.5 font-display text-[9px] font-bold tracking-[0.22em] text-[#7fe0ff]">
+                  DM VIEW
+                </span>
+              )}
             </h1>
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] uppercase tracking-[0.18em] text-[#c9a84c]/70 sm:text-[11px] sm:tracking-[0.22em]">
               <span>Sector Omega-9</span>
@@ -379,6 +397,11 @@ export default function GalaxyMap() {
         open={systemPanelOpen}
         reducedMotion={reducedMotion}
         accent={accent}
+        dmMode={dmMode}
+        discovered={focusSystemId ? campaign.isDiscovered(focusSystemId) : false}
+        isParty={!!focusSystemId && campaign.party === focusSystemId}
+        onToggleDiscovered={() => focusSystemId && campaign.toggleDiscovered(focusSystemId)}
+        onSetParty={() => focusSystemId && campaign.setParty(focusSystemId)}
         onBack={goToGalaxy}
       />
       <PlanetPanel

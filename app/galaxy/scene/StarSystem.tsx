@@ -10,12 +10,47 @@ import { type StarSystemData } from "../data";
 import {
   makeBeamTexture,
   makeCoronaTexture,
+  makeRadialTexture,
   makeRingTexture,
 } from "../textures";
 import { useReducedMotion } from "../useReducedMotion";
 import { NO_RAYCAST } from "./shared";
 import { OrbitingPlanets } from "./bodies";
 import { StarMesh } from "./StarMesh";
+
+/** Faint, anonymous marker for a system the party hasn't charted yet. */
+function UnchartedBlip({
+  position,
+  onClick,
+}: {
+  position: [number, number, number];
+  onClick?: () => void;
+}) {
+  const map = useMemo(() => makeRadialTexture("#7385b5", 1), []);
+  return (
+    <sprite
+      position={position}
+      scale={[2.4, 2.4, 1]}
+      raycast={onClick ? undefined : NO_RAYCAST}
+      onClick={
+        onClick
+          ? (e) => {
+              e.stopPropagation();
+              onClick();
+            }
+          : undefined
+      }
+    >
+      <spriteMaterial
+        map={map}
+        transparent
+        opacity={0.3}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </sprite>
+  );
+}
 
 function CoronaSprite({
   color,
@@ -196,12 +231,18 @@ export function StarSystem({
   system,
   focused,
   selectedPlanet,
+  discovered,
+  isParty,
+  dmMode,
   onSelectSystem,
   onSelectPlanet,
 }: {
   system: StarSystemData;
   focused: boolean;
   selectedPlanet: string | null;
+  discovered: boolean;
+  isParty: boolean;
+  dmMode: boolean;
   onSelectSystem: (id: string) => void;
   onSelectPlanet: (systemId: string, bodyName: string) => void;
 }) {
@@ -247,6 +288,11 @@ export function StarSystem({
       document.body.style.cursor = "auto";
     };
   }, [hovered]);
+
+  // Player view: an unmapped system is just a faint, anonymous blip.
+  if (!discovered && !dmMode) {
+    return <UnchartedBlip position={system.position} />;
+  }
 
   return (
     <group ref={groupRef} position={system.position}>
@@ -309,6 +355,50 @@ export function StarSystem({
           selectedPlanet={selectedPlanet}
           onSelectPlanet={onSelectPlanet}
         />
+      )}
+
+      {/* party-location marker */}
+      {isParty && (
+        <>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <ringGeometry
+              args={[system.size * 1.5 + 0.55, system.size * 1.5 + 0.75, 64]}
+            />
+            <meshBasicMaterial
+              color="#7fe0ff"
+              transparent
+              opacity={0.8}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+            />
+          </mesh>
+          <Html
+            center
+            position={[0, system.size * 1.4 + 1.5, 0]}
+            zIndexRange={[25, 0]}
+          >
+            <div className="pointer-events-none select-none whitespace-nowrap rounded-full border border-[#7fe0ff]/60 bg-[#07051a]/90 px-2.5 py-0.5 backdrop-blur-sm">
+              <span className="font-display text-[10px] font-bold tracking-[0.2em] text-[#7fe0ff]">
+                ◆ THE PARTY
+              </span>
+            </div>
+          </Html>
+        </>
+      )}
+
+      {/* DM-only cue: charted state hidden from players */}
+      {dmMode && !discovered && (
+        <Html
+          center
+          position={[0, -(system.size * 1.4 + 1.1), 0]}
+          zIndexRange={[15, 0]}
+        >
+          <div className="pointer-events-none select-none whitespace-nowrap rounded border border-[#ff9f40]/40 bg-[#07051a]/85 px-2 py-0.5">
+            <span className="font-display text-[9px] font-bold tracking-[0.2em] text-[#ff9f40]">
+              ⬚ HIDDEN
+            </span>
+          </div>
+        </Html>
       )}
     </group>
   );

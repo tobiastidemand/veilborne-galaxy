@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { OrbitControls, Stars } from "@react-three/drei";
+import { Line, OrbitControls, Stars } from "@react-three/drei";
 import {
   Bloom,
   ChromaticAberration,
@@ -27,6 +27,10 @@ export default function GalaxyScene({
   selectedPlanet,
   flightNonce,
   reducedMotion,
+  discovered,
+  party,
+  trail,
+  dmMode,
   onSelectSystem,
   onSelectPlanet,
   onArrive,
@@ -35,6 +39,10 @@ export default function GalaxyScene({
   selectedPlanet: string | null;
   flightNonce: number;
   reducedMotion: boolean;
+  discovered: Set<string>;
+  party: string | null;
+  trail: string[];
+  dmMode: boolean;
   onSelectSystem: (id: string) => void;
   onSelectPlanet: (systemId: string, bodyName: string) => void;
   onArrive: (id: string) => void;
@@ -94,6 +102,15 @@ export default function GalaxyScene({
 
   const caOffset = useMemo(() => new THREE.Vector2(0.0006, 0.0006), []);
 
+  // The party's travelled route, through systems they've actually visited.
+  const trailPoints = useMemo(
+    () =>
+      trail
+        .map((id) => SYSTEMS.find((s) => s.id === id)?.position)
+        .filter((p): p is [number, number, number] => !!p),
+    [trail]
+  );
+
   return (
     <MotionContext.Provider value={reducedMotion}>
       <color attach="background" args={["#03020a"]} />
@@ -116,12 +133,27 @@ export default function GalaxyScene({
         <JumpLane key={lane.key} from={lane.from} to={lane.to} />
       ))}
 
+      {/* the party's travelled route */}
+      {trailPoints.length >= 2 && (
+        <Line
+          points={trailPoints}
+          color="#7fe0ff"
+          lineWidth={1.5}
+          transparent
+          opacity={0.5}
+          depthWrite={false}
+        />
+      )}
+
       {SYSTEMS.map((system) => (
         <StarSystem
           key={system.id}
           system={system}
           focused={focusSystemId === system.id}
           selectedPlanet={selectedPlanet}
+          discovered={discovered.has(system.id)}
+          isParty={party === system.id}
+          dmMode={dmMode}
           onSelectSystem={onSelectSystem}
           onSelectPlanet={onSelectPlanet}
         />

@@ -44,12 +44,22 @@ export default function SystemPanel({
   open,
   reducedMotion = false,
   accent = "#c9a84c",
+  dmMode = false,
+  discovered = true,
+  isParty = false,
+  onToggleDiscovered,
+  onSetParty,
   onBack,
 }: {
   system: StarSystemData | null;
   open: boolean;
   reducedMotion?: boolean;
   accent?: string;
+  dmMode?: boolean;
+  discovered?: boolean;
+  isParty?: boolean;
+  onToggleDiscovered?: () => void;
+  onSetParty?: () => void;
   onBack: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -98,6 +108,29 @@ export default function SystemPanel({
           >
             ‹ Back to Galaxy
           </button>
+
+          {dmMode && (
+            <div className="flex flex-col gap-2 rounded-sm border border-[#7fe0ff]/35 bg-[#7fe0ff]/5 p-2.5">
+              <div className="font-display text-[9px] font-bold uppercase tracking-[0.28em] text-[#7fe0ff]/80">
+                Dungeon Master
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={onSetParty}
+                  disabled={isParty}
+                  className="rounded border border-[#7fe0ff]/40 px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-[0.18em] text-[#7fe0ff] transition-colors hover:bg-[#7fe0ff]/10 disabled:cursor-default disabled:opacity-40"
+                >
+                  {isParty ? "◆ Party is here" : "Set party here"}
+                </button>
+                <button
+                  onClick={onToggleDiscovered}
+                  className="rounded border border-[#c9a84c]/40 px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-[0.18em] text-[#c9a84c] transition-colors hover:bg-[#c9a84c]/10"
+                >
+                  {discovered ? "Hide from players" : "Reveal to players"}
+                </button>
+              </div>
+            </div>
+          )}
 
           <header>
             <div className="text-[10px] uppercase tracking-[0.32em] text-[#c9a84c]/45">
