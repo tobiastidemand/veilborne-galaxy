@@ -23,6 +23,7 @@ export interface Enemy {
   shields: number;
   tn: number; // target number to hit it
   tier: number;
+  atk: number; // base attack damage
   conditions: Condition[];
 }
 
@@ -60,8 +61,11 @@ export interface BattleState {
 /* --- tuning (small & tactical scale) ------------------------------ */
 export const SHIELD_OVERCAP = 5; // shields may exceed max by this much
 export const MOMENTUM_PER_ROUND = 1;
-export const POWER_PER_ROUND = 3;
+export const POWER_PER_ROUND = 3; // restored — the +2 economy bit too hard once enemies got dangerous
 export const SHIP_DEFENCE_BASE = 10; // enemy attacks roll vs this + evasion
+export const MOOK_DAMAGE = 2; // default enemy attack (+ degrees of success); elites set higher
+// A hit that clears the TN by this much deals +1 damage (per step).
+export const DEGREE_STEP = 4;
 
 export const DAMAGE_BASE: Record<DamageType, number> = {
   balanced: 2,
@@ -109,7 +113,7 @@ export function defaultBattle(): BattleState {
       shields: 6,
       maxShields: 6,
       power: 4,
-      maxPower: 8,
+      maxPower: 6,
       momentum: 0,
       maxMomentum: 6,
       tier: 1,
@@ -137,8 +141,9 @@ export function makeEnemy(name: string, hull: number): Enemy {
     hull,
     maxHull: hull,
     shields: Math.max(0, Math.round(hull / 4)),
-    tn: 12,
+    tn: 10,
     tier: 1,
+    atk: MOOK_DAMAGE,
     conditions: [],
   };
 }

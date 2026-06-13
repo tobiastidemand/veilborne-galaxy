@@ -1,6 +1,7 @@
 import {
   DAMAGE_BASE,
   DAMAGE_LABEL,
+  DEGREE_STEP,
   MOMENTUM_PER_ROUND,
   POWER_PER_ROUND,
   SHIELD_OVERCAP,
@@ -16,6 +17,10 @@ import {
 const clamp = (v: number, min: number, max: number) =>
   Math.max(min, Math.min(max, v));
 const d20 = () => 1 + Math.floor(Math.random() * 20);
+
+// Extra damage for clearing the TN handily (rewards Mark / Inspire / good rolls).
+const degrees = (total: number, tn: number) =>
+  Math.max(0, Math.floor((total - tn) / DEGREE_STEP));
 
 const log = (s: BattleState, line: string): BattleState => ({
   ...s,
@@ -96,6 +101,69 @@ export function canAfford(s: BattleState, a: ActionDef, weapon?: DamageType): bo
   return s.ship.power >= c.power && s.ship.momentum >= c.momentum;
 }
 
+/** Unified attack roll used by the Gunner and the Commander's secondary. */
+function performAttack(
+  s: BattleState,
+  actor: string,
+  targetId: string,
+  type: DamageType
+): BattleState {
+  const enemy = s.enemies.find((e) => e.id === targetId);
+  if (!enemy) return log(s, `${actor} fires — no target.`);
+
+  const die = d20();
+  const crit = die === 20;
+  const marked = hasCond(enemy.conditions, "marked");
+  const breached = hasCond(enemy.conditions, "breached");
+  const rangeMod =
+    type === "laser" ? (s.range === "close" ? 1 : -1) : type === "missile" ? (s.range === "long" ? 1 : -1) : 0;
+  const total = die + s.ship.tier + s.buffs.attackMod + (marked ? 2 : 0) + rangeMod;
+  const tn = enemy.tn - (breached ? 2 : 0);
+  const label = DAMAGE_LABEL[type];
+
+  const kill = (list: typeof s.enemies) => list.filter((e) => e.hull > 0);
+
+  // miss — but a near miss grazes for 1
+  if (!crit && total < tn) {
+    if (total >= tn - 2) {
+      const res = resolveDamage(enemy.shields, enemy.hull, type, 1, breached);
+      const enemies = kill(
+        s.enemies.map((e) => (e.id === enemy.id ? { ...e, shields: res.shields, hull: res.hull } : e))
+      );
+      return log({ ...s, enemies }, `${actor} grazes ${enemy.name} with ${label} — rolled ${total} vs ${tn}: ${res.note}.`);
+    }
+    return log(s, `${actor} fires ${label} at ${enemy.name} — rolled ${total} vs ${tn}, miss.`);
+  }
+
+  let dmg = DAMAGE_BASE[type] + s.buffs.nextHitBonus + degrees(total, tn);
+  if (crit) dmg *= 2;
+  const res = resolveDamage(enemy.shields, enemy.hull, type, dmg, breached);
+  const enemies = kill(
+    s.enemies.map((e) =>
+      e.id === enemy.id
+        ? {
+            ...e,
+            shields: res.shields,
+            hull: res.hull,
+            conditions: (() => {
+              let cs = e.conditions;
+              if (crit) cs = addCond(cs, "burning", 2);
+              if (type === "ap") cs = addCond(cs, "breached", 2);
+              return cs;
+            })(),
+          }
+        : e
+    )
+  );
+  const dead = res.hull <= 0;
+  return log(
+    { ...s, enemies, buffs: { ...s.buffs, nextHitBonus: 0 } },
+    dead
+      ? `${actor} destroys ${enemy.name}! (${label}, rolled ${total}${crit ? " CRIT" : ""})`
+      : `${actor} hits ${enemy.name} with ${label} — rolled ${total}${crit ? " CRIT" : ""}: ${res.note}.`
+  );
+}
+
 /* --- role action menus -------------------------------------------- */
 
 export const ROLE_ACTIONS: Record<RoleId, ActionDef[]> = {
@@ -122,17 +190,25 @@ export const ROLE_ACTIONS: Record<RoleId, ActionDef[]> = {
           `${c.actor} calls a coordinated strike — next hit +2 damage.`
         ),
     },
+    {
+      id: "openfire",
+      label: "Open fire (secondary)",
+      momentum: 1,
+      needsTarget: true,
+      hint: "fire the ship's secondary battery — a Balanced shot",
+      run: (s, c) => performAttack(spend(s, 0, 1), c.actor, c.targetId ?? "", "balanced"),
+    },
   ],
   navigator: [
     {
       id: "evade",
       label: "Evasive maneuvers",
-      power: 1,
-      hint: "+3 ship defence this round",
+      power: 2,
+      hint: "+2 ship defence this round",
       run: (s, c) =>
         log(
-          { ...spend(s, 1), ship: { ...s.ship, evasion: s.ship.evasion + 3 } },
-          `${c.actor} flies evasive — +3 defence this round.`
+          { ...spend(s, 2), ship: { ...s.ship, evasion: s.ship.evasion + 2 } },
+          `${c.actor} flies evasive — +2 defence this round.`
         ),
     },
     {
@@ -232,47 +308,7 @@ export const ROLE_ACTIONS: Record<RoleId, ActionDef[]> = {
       hint: "roll d20 + Tier vs target TN; pick a weapon type",
       run: (s, c) => {
         const type = c.weapon ?? "balanced";
-        const next = spend(s, WEAPON_POWER[type]);
-        const enemy = next.enemies.find((e) => e.id === c.targetId);
-        if (!enemy) return log(next, `${c.actor} fires — no target.`);
-
-        const die = d20();
-        const crit = die === 20;
-        const marked = hasCond(enemy.conditions, "marked");
-        const breached = hasCond(enemy.conditions, "breached");
-        const rangeMod = type === "laser" ? (s.range === "close" ? 1 : -1) : type === "missile" ? (s.range === "long" ? 1 : -1) : 0;
-        const mods = next.ship.tier + next.buffs.attackMod + (marked ? 2 : 0) + rangeMod;
-        const total = die + mods;
-        const tn = enemy.tn - (breached ? 2 : 0);
-
-        if (!crit && total < tn) {
-          return log(next, `${c.actor} fires ${DAMAGE_LABEL[type]} at ${enemy.name} — rolled ${total} vs ${tn}, miss.`);
-        }
-
-        let dmg = DAMAGE_BASE[type] + next.buffs.nextHitBonus;
-        if (crit) dmg *= 2;
-        const res = resolveDamage(enemy.shields, enemy.hull, type, dmg, breached);
-
-        let enemies = next.enemies.map((e) =>
-          e.id === enemy.id
-            ? {
-                ...e,
-                shields: res.shields,
-                hull: res.hull,
-                // crit ignites the target
-                conditions: crit ? addCond(e.conditions, "burning", 2) : e.conditions,
-              }
-            : e
-        );
-        const destroyed = res.hull <= 0;
-        if (destroyed) enemies = enemies.filter((e) => e.id !== enemy.id);
-
-        return log(
-          { ...next, enemies, buffs: { ...next.buffs, nextHitBonus: 0 } },
-          destroyed
-            ? `${c.actor} destroys ${enemy.name}! (${DAMAGE_LABEL[type]}, rolled ${total}${crit ? " CRIT" : ""})`
-            : `${c.actor} hits ${enemy.name} with ${DAMAGE_LABEL[type]} — rolled ${total}${crit ? " CRIT" : ""}: ${res.note}.`
-        );
+        return performAttack(spend(s, WEAPON_POWER[type]), c.actor, c.targetId ?? "", type);
       },
     },
   ],
@@ -319,10 +355,18 @@ export function advancePhase(s: BattleState): BattleState {
   return log({ ...s, phase: nextPhase }, `Phase: ${nextPhase}.`);
 }
 
-/** End phase: tick conditions and resolve durations. */
+/** End phase: tick conditions and resolve durations (ship + enemies). */
 function resolveEnd(s: BattleState): BattleState {
   let state = s;
-  // burning damage to enemies, then decay all enemy conditions
+
+  // ship burning
+  let shipHull = state.ship.hull;
+  if (hasCond(state.ship.conditions, "burning")) shipHull = Math.max(0, shipHull - 1);
+  const shipConditions = state.ship.conditions
+    .map((c) => ({ ...c, rounds: c.rounds - 1 }))
+    .filter((c) => c.rounds > 0);
+
+  // enemy burning, then decay all conditions
   const enemies = state.enemies
     .map((e) => {
       let hull = e.hull;
@@ -334,9 +378,15 @@ function resolveEnd(s: BattleState): BattleState {
     })
     .filter((e) => e.hull > 0);
 
-  const burned = state.enemies.some((e) => hasCond(e.conditions, "burning"));
-  state = { ...state, enemies };
-  if (burned) state = log(state, "End: burning targets take 1 damage.");
+  const burned =
+    hasCond(state.ship.conditions, "burning") ||
+    state.enemies.some((e) => hasCond(e.conditions, "burning"));
+  state = {
+    ...state,
+    ship: { ...state.ship, hull: shipHull, conditions: shipConditions },
+    enemies,
+  };
+  if (burned) state = log(state, "End: burning takes 1 damage.");
   return log(state, "End: conditions resolved.");
 }
 
@@ -349,12 +399,18 @@ export function enemiesFire(s: BattleState): BattleState {
     const total = die + e.tier;
     if (die === 20 || total >= defence) {
       const crit = die === 20;
-      const dmg = 2 + (crit ? 2 : 0);
+      let dmg = e.atk + degrees(total, defence);
+      if (crit) dmg *= 2;
       const breached = hasCond(state.ship.conditions, "breached");
       const res = resolveDamage(state.ship.shields, state.ship.hull, "balanced", dmg, breached);
       state = {
         ...state,
-        ship: { ...state.ship, shields: res.shields, hull: res.hull },
+        ship: {
+          ...state.ship,
+          shields: res.shields,
+          hull: res.hull,
+          conditions: crit ? addCond(state.ship.conditions, "burning", 2) : state.ship.conditions,
+        },
       };
       state = log(state, `${e.name} fires — rolled ${total} vs ${defence}${crit ? " CRIT" : ""}: ${res.note}.`);
     } else {
