@@ -18,6 +18,7 @@ import {
 } from "./data";
 import {
   hashSeed,
+  makeBeamTexture,
   makeCloudTexture,
   makePlanetTexture,
   makeRadialTexture,
@@ -778,35 +779,58 @@ function BlackHoleCore({ system }: { system: StarSystemData }) {
   );
 }
 
+// Two opposed cones sharing the texture, bright at the star and tapering /
+// fading to a point at each tip.
+function BeamCones({
+  radius,
+  length,
+  opacity,
+  map,
+}: {
+  radius: number;
+  length: number;
+  opacity: number;
+  map: THREE.Texture;
+}) {
+  const material = (
+    <meshBasicMaterial
+      map={map}
+      transparent
+      opacity={opacity}
+      blending={THREE.AdditiveBlending}
+      depthWrite={false}
+      side={THREE.DoubleSide}
+    />
+  );
+  return (
+    <>
+      <mesh position={[0, length / 2, 0]}>
+        <coneGeometry args={[radius, length, 16, 1, true]} />
+        {material}
+      </mesh>
+      <mesh position={[0, -length / 2, 0]} rotation={[Math.PI, 0, 0]}>
+        <coneGeometry args={[radius, length, 16, 1, true]} />
+        {material}
+      </mesh>
+    </>
+  );
+}
+
 function PulsarBeam({ system }: { system: StarSystemData }) {
   const beamRef = useRef<THREE.Group>(null);
+  const beamMap = useMemo(() => makeBeamTexture(system.color), [system.color]);
+
+  useEffect(() => () => beamMap.dispose(), [beamMap]);
 
   useFrame(({ clock }) => {
     if (beamRef.current) beamRef.current.rotation.y = clock.elapsedTime * 0.7;
   });
 
+  const length = 5.5;
   return (
     <group ref={beamRef} rotation={[0.25, 0, 0.18]}>
-      <mesh rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.07, 0.07, 20, 8, 1, true]} />
-        <meshBasicMaterial
-          color={system.color}
-          transparent
-          opacity={0.35}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </mesh>
-      <mesh rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.22, 0.22, 20, 8, 1, true]} />
-        <meshBasicMaterial
-          color={system.color}
-          transparent
-          opacity={0.08}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </mesh>
+      <BeamCones radius={0.13} length={length} opacity={0.55} map={beamMap} />
+      <BeamCones radius={0.4} length={length} opacity={0.16} map={beamMap} />
     </group>
   );
 }

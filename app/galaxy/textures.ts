@@ -206,6 +206,33 @@ export function makeCloudTexture(seed: number): THREE.CanvasTexture {
 }
 
 /**
+ * Lengthwise gradient for a pulsar beam: bright at the base (the star) and
+ * fading to nothing toward the tip, so a cone reads as a soft tapering ray.
+ */
+export function makeBeamTexture(color: string): THREE.CanvasTexture {
+  const w = 4;
+  const h = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  const c = new THREE.Color(color);
+  const rgb = `${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(
+    c.b * 255
+  )}`;
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  // canvas bottom maps to v=0 (the cone base / star end) with flipY
+  grad.addColorStop(0, `rgba(${rgb},0)`); // tip — transparent
+  grad.addColorStop(0.4, `rgba(${rgb},0.22)`);
+  grad.addColorStop(1, `rgba(${rgb},0.95)`); // base — bright
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
  * Hollow ring gradient — the lens-distortion style halo around the black hole.
  */
 export function makeRingTexture(color: string, size = 256): THREE.CanvasTexture {
