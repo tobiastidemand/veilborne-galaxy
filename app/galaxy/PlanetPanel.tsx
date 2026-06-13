@@ -79,25 +79,25 @@ export default function PlanetPanel({
   return (
     <aside
       ref={panelRef}
-      className="fixed right-0 top-0 z-30 h-full w-[340px] overflow-y-auto border-l border-[#c9a84c]/50 bg-[rgba(7,5,26,0.94)] backdrop-blur-md"
+      className="tome-panel tome-scroll fixed right-0 top-0 z-30 h-full w-[348px] overflow-y-auto border-l-2 border-[#c9a84c]/55 backdrop-blur-md"
     >
       {shown && (
         <div
           ref={contentRef}
-          className="flex min-h-full flex-col gap-5 px-6 pb-8 pt-20"
+          className="flex min-h-full flex-col gap-4 px-6 pb-10 pt-[4.75rem]"
         >
           <button
             onClick={onBack}
-            className="self-start font-display text-xs font-bold tracking-[0.25em] text-[#c9a84c] transition-colors hover:text-[#f0d080]"
+            className="self-start font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#c9a84c] transition-colors hover:text-[#f0d080]"
           >
-            ← BACK TO {shown.systemName.toUpperCase()}
+            ‹ Back to {shown.systemName}
           </button>
 
           <header>
-            <div className="text-[10px] uppercase tracking-[0.3em] text-white/35">
+            <div className="text-[10px] uppercase tracking-[0.32em] text-[#c9a84c]/45">
               {shown.systemName} · Celestial Body
             </div>
-            <h2 className="mt-1 font-display text-3xl font-black leading-tight text-[#f0d080]">
+            <h2 className="mt-1.5 font-title text-[2rem] font-black leading-[1.05] text-[#f0d080] drop-shadow-[0_0_16px_rgba(240,208,128,0.25)]">
               {shown.body.name}
               {shown.body.highlight && (
                 <span className="ml-2 text-[#f0d080]">★</span>
@@ -107,29 +107,39 @@ export default function PlanetPanel({
 
           <div className="flex items-center gap-2.5">
             <span
-              className="h-3 w-3 shrink-0 rounded-full"
+              className="h-3 w-3 shrink-0 rotate-45"
               style={{
                 backgroundColor: shown.body.color,
                 boxShadow: `0 0 8px ${shown.body.color}`,
               }}
             />
-            <span className="text-[11px] uppercase tracking-[0.2em] text-white/45">
+            <span className="text-[11px] uppercase tracking-[0.2em] text-[#c9a84c]/55">
               Surveyed Body
             </span>
           </div>
 
+          <div className="tome-divider">
+            <span>✦</span>
+          </div>
+
           <section>
-            <h3 className="mb-2 font-display text-xs font-bold tracking-[0.25em] text-[#c9a84c]">
-              SURVEY NOTES
+            <h3 className="mb-2 flex items-center gap-2 font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#c9a84c]">
+              <span className="text-[#c9a84c]/50">❖</span>
+              Survey Notes
             </h3>
-            <p className="text-sm italic leading-relaxed text-white/75">
+            <p className="dropcap text-sm italic leading-relaxed text-[#e9e2d0]/80">
               {shown.body.description}
             </p>
           </section>
 
-          <section className="mt-auto border-t border-white/10 pt-4 text-[11px] leading-relaxed tracking-wide text-white/35">
-            Survey data cross-referenced against {shown.systemName} system
-            records. Anomalous readings flagged for the Arcane Survey.
+          <section className="mt-auto pt-4">
+            <div className="tome-divider mb-3">
+              <span>✦</span>
+            </div>
+            <p className="text-[11px] italic leading-relaxed tracking-wide text-[#c9a84c]/40">
+              Survey data cross-referenced against {shown.systemName} system
+              records. Anomalous readings flagged for the Arcane Survey.
+            </p>
           </section>
         </div>
       )}

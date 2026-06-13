@@ -29,6 +29,90 @@ const LEGEND_CHAIN = [
   { label: "Unknown", color: "#ffffff", opacity: 0.35 },
 ];
 
+function Divider() {
+  return (
+    <div className="tome-divider my-2.5">
+      <span>✦</span>
+    </div>
+  );
+}
+
+/** Collapsible cartographer's key. Self-contained so toggling never re-renders the scene. */
+function Legend() {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <div className="tome-panel tome-frame pointer-events-auto fixed bottom-5 left-5 z-40 hidden w-[262px] rounded-sm border border-[#c9a84c]/40 md:block">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors hover:text-[#f0d080]"
+        aria-expanded={open}
+      >
+        <span className="whitespace-nowrap font-display text-[11px] font-bold uppercase tracking-[0.22em] text-[#f0d080]">
+          Cartographer&apos;s Key
+        </span>
+        <span
+          className={`text-xs text-[#c9a84c] transition-transform duration-300 ${
+            open ? "" : "-rotate-90"
+          }`}
+        >
+          ▾
+        </span>
+      </button>
+
+      <div
+        className="overflow-hidden px-4 transition-[max-height,opacity] duration-300 ease-out"
+        style={{ maxHeight: open ? 360 : 0, opacity: open ? 1 : 0 }}
+      >
+        <div>
+          <div className="pb-4 pt-1">
+            <div className="mb-2 font-display text-[9px] font-bold uppercase tracking-[0.3em] text-[#c9a84c]/70">
+              Stellar Bodies
+            </div>
+            <div className="grid grid-cols-2 gap-x-5 gap-y-1.5">
+              {SYSTEMS.map((s) => {
+                const dot = s.kind === "blackhole" ? "#e84daa" : s.color;
+                return (
+                  <div key={s.id} className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: dot, boxShadow: `0 0 5px ${dot}` }}
+                    />
+                    <span className="text-[11px] leading-tight text-[#e9e2d0]/65">
+                      {s.starType}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <Divider />
+
+            <div className="mb-1.5 font-display text-[9px] font-bold uppercase tracking-[0.3em] text-[#c9a84c]/70">
+              Aureate Chain
+            </div>
+            <div className="grid grid-cols-2 gap-x-5 gap-y-1">
+              {LEGEND_CHAIN.map((c) => (
+                <div key={c.label} className="flex items-center gap-2">
+                  <span
+                    className="shrink-0 text-[13px] leading-none"
+                    style={{ color: c.color, opacity: c.opacity }}
+                  >
+                    ⛓
+                  </span>
+                  <span className="text-[11px] leading-tight text-[#e9e2d0]/65">
+                    {c.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function GalaxyMap() {
   const [view, setView] = useState<View>({ mode: "galaxy" });
   // Bumped on every camera-flight request. Lets re-selecting the same system
@@ -116,26 +200,34 @@ export default function GalaxyMap() {
         />
       </Canvas>
 
-      {/* scanlines */}
+      {/* lamplight vignette + scanlines */}
+      <div className="vignette pointer-events-none fixed inset-0 z-20" />
       <div className="scanlines pointer-events-none fixed inset-0 z-50" />
 
-      {/* header */}
-      <header className="pointer-events-none fixed left-0 right-0 top-0 z-40 flex items-start justify-between border-b border-[#c9a84c]/40 bg-[#07051a]/70 px-6 py-3 backdrop-blur-sm">
-        <div>
-          <h1 className="font-display text-xl font-black tracking-[0.3em] text-[#f0d080]">
-            THE VEILBORN GALAXY
-          </h1>
-          <p className="mt-0.5 text-xs tracking-[0.2em] text-white/45">
-            Sector Omega-9 · Uncharted Territory · Arcane Survey Incomplete
-          </p>
-        </div>
-        <div className="hidden text-right text-[11px] leading-relaxed tracking-wider text-white/40 sm:block">
-          <div>Galactic Chart No. 7 of ∞</div>
-          <div>Survey Vessel: Astral Cartographer</div>
+      {/* header cartouche */}
+      <header className="pointer-events-none fixed inset-x-0 top-0 z-40">
+        <div className="flex items-start justify-between gap-4 border-b border-[#c9a84c]/35 bg-gradient-to-b from-[#0b0820]/92 to-[#0b0820]/45 px-6 py-3 backdrop-blur-sm">
           <div>
-            Status: <span className="text-[#ff9f40]">⚠ UNMAPPED</span>
+            <h1 className="font-title text-2xl font-black tracking-[0.16em] text-[#f0d080] drop-shadow-[0_0_18px_rgba(240,208,128,0.25)]">
+              The Veilborn Galaxy
+            </h1>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] uppercase tracking-[0.22em] text-[#c9a84c]/70">
+              <span>Sector Omega-9</span>
+              <span className="text-[#c9a84c]/40">✦</span>
+              <span>Uncharted Territory</span>
+              <span className="text-[#c9a84c]/40">✦</span>
+              <span>Arcane Survey Incomplete</span>
+            </p>
+          </div>
+          <div className="hidden text-right font-display text-[10px] uppercase leading-relaxed tracking-[0.16em] text-[#c9a84c]/55 sm:block">
+            <div>Galactic Chart № 7 of ∞</div>
+            <div>Survey Vessel · Astral Cartographer</div>
+            <div>
+              Status · <span className="text-[#ff9f40]">⚠ Unmapped</span>
+            </div>
           </div>
         </div>
+        <div className="h-px bg-gradient-to-r from-transparent via-[#c9a84c]/45 to-transparent" />
       </header>
 
       {/* back to galaxy */}
@@ -143,52 +235,22 @@ export default function GalaxyMap() {
         <button
           ref={backRef}
           onClick={goToGalaxy}
-          className="fixed left-6 top-20 z-40 border border-[#c9a84c]/50 bg-[#07051a]/80 px-4 py-2 font-display text-xs font-bold tracking-[0.25em] text-[#c9a84c] backdrop-blur-sm transition-colors hover:border-[#f0d080] hover:text-[#f0d080]"
+          className="tome-panel pointer-events-auto fixed left-6 top-[4.75rem] z-40 px-4 py-2 font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#c9a84c] transition-colors hover:text-[#f0d080]"
         >
-          ← BACK TO GALAXY
+          ‹ Back to Galaxy
         </button>
       )}
 
-      {/* legend */}
-      <div className="pointer-events-none fixed bottom-4 left-4 z-40 hidden rounded border border-white/10 bg-[#07051a]/75 px-4 py-3 backdrop-blur-sm md:block">
-        <div className="mb-2 font-display text-[10px] font-bold tracking-[0.3em] text-[#c9a84c]">
-          STELLAR LEGEND
-        </div>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-          {SYSTEMS.map((s) => (
-            <div key={s.id} className="flex items-center gap-2">
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{
-                  backgroundColor: s.kind === "blackhole" ? "#e84daa" : s.color,
-                  boxShadow: `0 0 5px ${
-                    s.kind === "blackhole" ? "#e84daa" : s.color
-                  }`,
-                }}
-              />
-              <span className="text-[11px] text-white/60">{s.starType}</span>
-            </div>
-          ))}
-        </div>
-        <div className="mt-2.5 border-t border-white/10 pt-2">
-          <div className="mb-1.5 font-display text-[10px] font-bold tracking-[0.3em] text-[#c9a84c]">
-            CHAIN PRESENCE
-          </div>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-0.5">
-            {LEGEND_CHAIN.map((c) => (
-              <div key={c.label} className="flex items-center gap-2">
-                <span style={{ color: c.color, opacity: c.opacity }}>⛓</span>
-                <span className="text-[11px] text-white/60">{c.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <Legend />
 
       {/* instructions */}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-40 text-right text-[11px] leading-relaxed tracking-wider text-white/30">
-        <div>Click a system to survey</div>
-        <div>Drag to orbit · Scroll to zoom</div>
+      <div className="pointer-events-none fixed bottom-5 right-5 z-40 text-right">
+        <p className="font-display text-[10px] font-bold uppercase tracking-[0.28em] text-[#c9a84c]/55">
+          Click a system to survey
+        </p>
+        <p className="mt-0.5 text-[12px] italic tracking-wide text-[#e9e2d0]/35">
+          Drag to orbit · scroll to draw nearer
+        </p>
       </div>
 
       <SystemPanel

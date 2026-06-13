@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { Cinzel, Crimson_Pro } from "next/font/google";
+import { Cinzel, Cinzel_Decorative, Crimson_Pro } from "next/font/google";
 import "./globals.css";
 
 const cinzel = Cinzel({
   variable: "--font-cinzel",
   subsets: ["latin"],
   weight: ["400", "700", "900"],
+});
+
+const cinzelDecorative = Cinzel_Decorative({
+  variable: "--font-cinzel-decorative",
+  subsets: ["latin"],
+  weight: ["700", "900"],
 });
 
 const crimsonPro = Crimson_Pro({
@@ -26,7 +32,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${cinzel.variable} ${crimsonPro.variable}`}>
+    <html
+      lang="en"
+      className={`${cinzel.variable} ${cinzelDecorative.variable} ${crimsonPro.variable}`}
+    >
       <body>{children}</body>
     </html>
   );

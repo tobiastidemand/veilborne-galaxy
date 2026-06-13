@@ -12,11 +12,29 @@ import {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 border-b border-white/5 py-1.5">
-      <span className="text-[11px] uppercase tracking-[0.18em] text-white/40">
+    <div className="ledger-row py-1.5">
+      <span className="text-[11px] uppercase tracking-[0.18em] text-[#c9a84c]/65">
         {label}
       </span>
-      <span className="text-right text-sm text-white/85">{value}</span>
+      <span className="leader" />
+      <span className="text-right text-sm text-[#e9e2d0]/90">{value}</span>
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="mb-2 flex items-center gap-2 font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#c9a84c]">
+      <span className="text-[#c9a84c]/50">❖</span>
+      {children}
+    </h3>
+  );
+}
+
+function Divider() {
+  return (
+    <div className="tome-divider">
+      <span>✦</span>
     </div>
   );
 }
@@ -62,28 +80,30 @@ export default function SystemPanel({
   return (
     <aside
       ref={panelRef}
-      className="fixed right-0 top-0 z-30 h-full w-[340px] overflow-y-auto border-l border-[#c9a84c]/50 bg-[rgba(7,5,26,0.94)] backdrop-blur-md"
+      className="tome-panel tome-scroll fixed right-0 top-0 z-30 h-full w-[348px] overflow-y-auto border-l-2 border-[#c9a84c]/55 backdrop-blur-md"
     >
       {shown && (
-        <div className="flex min-h-full flex-col gap-5 px-6 pb-8 pt-20">
+        <div className="flex min-h-full flex-col gap-4 px-6 pb-10 pt-[4.75rem]">
           <button
             onClick={onBack}
-            className="self-start font-display text-xs font-bold tracking-[0.25em] text-[#c9a84c] transition-colors hover:text-[#f0d080]"
+            className="self-start font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#c9a84c] transition-colors hover:text-[#f0d080]"
           >
-            ← BACK TO GALAXY
+            ‹ Back to Galaxy
           </button>
 
           <header>
-            <div className="text-[10px] uppercase tracking-[0.3em] text-white/35">
+            <div className="text-[10px] uppercase tracking-[0.32em] text-[#c9a84c]/45">
               {shown.designation}
             </div>
-            <h2 className="mt-1 font-display text-3xl font-black leading-tight text-[#f0d080]">
+            <h2 className="mt-1.5 font-title text-[2rem] font-black leading-[1.05] text-[#f0d080] drop-shadow-[0_0_16px_rgba(240,208,128,0.25)]">
               {shown.name}
             </h2>
-            <div className="mt-1 text-sm tracking-wide text-cyan-300/90">
+            <div className="mt-1.5 text-sm italic tracking-wide text-cyan-200/85">
               {shown.starType}
             </div>
           </header>
+
+          <Divider />
 
           <section>
             <Stat label="Star Type" value={shown.starType} />
@@ -92,43 +112,43 @@ export default function SystemPanel({
             <Stat label="Distance from Core" value={shown.distance} />
           </section>
 
+          <Divider />
+
           <section>
-            <h3 className="mb-2 font-display text-xs font-bold tracking-[0.25em] text-[#c9a84c]">
-              AUREATE CHAIN PRESENCE
-            </h3>
+            <SectionTitle>Aureate Chain Presence</SectionTitle>
             <div
-              className="text-sm font-semibold tracking-wider"
+              className="text-sm font-semibold uppercase tracking-[0.12em]"
               style={{ color: chainStyle?.color, opacity: chainStyle?.opacity }}
             >
               ⛓ {shown.chain.level}
             </div>
-            <p className="mt-1 text-sm leading-relaxed text-white/65">
+            <p className="mt-1 text-sm leading-relaxed text-[#e9e2d0]/65">
               {shown.chain.detail}
             </p>
           </section>
 
+          <Divider />
+
           <section>
-            <h3 className="mb-2 font-display text-xs font-bold tracking-[0.25em] text-[#c9a84c]">
-              CHARTED BODIES
-            </h3>
-            <ul className="flex flex-col gap-2.5">
+            <SectionTitle>Charted Bodies</SectionTitle>
+            <ul className="flex flex-col gap-3">
               {shown.bodies.map((body) => (
                 <li key={body.name} className="flex gap-2.5">
                   <span
-                    className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+                    className="mt-[7px] h-2 w-2 shrink-0 rotate-45"
                     style={{
                       backgroundColor: body.color,
                       boxShadow: `0 0 6px ${body.color}`,
                     }}
                   />
                   <div>
-                    <span className="text-sm font-semibold text-white/90">
+                    <span className="text-sm font-semibold tracking-wide text-[#e9e2d0]/90">
                       {body.name}
                       {body.highlight && (
                         <span className="ml-1 text-[#f0d080]">★</span>
                       )}
                     </span>
-                    <p className="text-[13px] italic leading-snug text-white/55">
+                    <p className="text-[13px] italic leading-snug text-[#e9e2d0]/55">
                       {body.description}
                     </p>
                   </div>
@@ -136,24 +156,25 @@ export default function SystemPanel({
               ))}
             </ul>
             {uncharted > 0 && (
-              <p className="mt-2.5 text-[11px] italic leading-snug text-white/35">
+              <p className="mt-3 text-[11px] italic leading-snug text-[#c9a84c]/40">
                 + {uncharted} uncharted{" "}
                 {uncharted === 1 ? "body" : "bodies"} detected · survey pending
               </p>
             )}
           </section>
 
-          <section className="flex items-center gap-3">
-            <h3 className="font-display text-xs font-bold tracking-[0.25em] text-[#c9a84c]">
-              THREAT ASSESSMENT
-            </h3>
+          <Divider />
+
+          <section className="flex items-center justify-between gap-3">
+            <SectionTitle>Threat</SectionTitle>
             {threat && (
               <span
-                className="rounded border px-2.5 py-0.5 text-xs font-bold tracking-[0.2em]"
+                className="rounded-sm border px-3 py-1 font-display text-[11px] font-bold uppercase tracking-[0.22em]"
                 style={{
                   color: threat.color,
                   borderColor: threat.color,
                   backgroundColor: threat.bg,
+                  boxShadow: `inset 0 0 12px ${threat.bg}, 0 0 10px ${threat.bg}`,
                 }}
               >
                 {shown.threat}
@@ -161,12 +182,12 @@ export default function SystemPanel({
             )}
           </section>
 
+          <Divider />
+
           <section>
-            <h3 className="mb-2 font-display text-xs font-bold tracking-[0.25em] text-[#c9a84c]">
-              NAVIGATOR&apos;S NOTES
-            </h3>
-            <blockquote className="border-l-2 border-[#c9a84c] pl-3 text-sm italic leading-relaxed text-white/70">
-              &ldquo;{shown.lore}&rdquo;
+            <SectionTitle>Navigator&apos;s Notes</SectionTitle>
+            <blockquote className="dropcap border-l-2 border-[#c9a84c]/70 pl-3.5 text-sm italic leading-relaxed text-[#e9e2d0]/75">
+              {shown.lore}
             </blockquote>
           </section>
         </div>
