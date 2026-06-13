@@ -57,6 +57,29 @@ type View =
   | { mode: "system"; systemId: string }
   | { mode: "planet"; systemId: string; bodyName: string };
 
+/** Parse a shareable URL (?system=…&body=…) into the initial view. */
+function readViewFromURL(): View {
+  const params = new URLSearchParams(window.location.search);
+  const systemId = params.get("system");
+  if (!systemId) return { mode: "galaxy" };
+  const system = SYSTEMS.find((s) => s.id === systemId);
+  if (!system) return { mode: "galaxy" };
+  const bodyName = params.get("body");
+  if (bodyName && getSystemBodies(system).some((b) => b.name === bodyName)) {
+    return { mode: "planet", systemId, bodyName };
+  }
+  return { mode: "system", systemId };
+}
+
+/** Keep the URL in sync with the current view so it can be bookmarked/shared. */
+function writeViewToURL(view: View) {
+  const params = new URLSearchParams();
+  if (view.mode !== "galaxy") params.set("system", view.systemId);
+  if (view.mode === "planet") params.set("body", view.bodyName);
+  const qs = params.toString();
+  window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+}
+
 const LEGEND_CHAIN = [
   { label: "Administrative HQ", color: "#f0d080", opacity: 1 },
   { label: "Dominant", color: "#f0d080", opacity: 0.8 },
@@ -158,7 +181,8 @@ function Legend({ hideOnMobile }: { hideOnMobile: boolean }) {
 }
 
 export default function GalaxyMap() {
-  const [view, setView] = useState<View>({ mode: "galaxy" });
+  // Lazy init from the URL (client-only — GalaxyMap is dynamically ssr:false).
+  const [view, setView] = useState<View>(readViewFromURL);
   // Bumped on every camera-flight request. Lets re-selecting the same system
   // re-trigger the flight even though `focusSystemId` is unchanged.
   const [flightNonce, setFlightNonce] = useState(0);
@@ -203,6 +227,18 @@ export default function GalaxyMap() {
     if (v.mode !== "galaxy" && v.systemId === id) setSystemArrived(true);
   }, []);
 
+  // One step back: planet → system → galaxy. Shared by Esc and void-clicks.
+  const stepBack = useCallback(() => {
+    const v = viewRef.current;
+    if (v.mode === "planet") backToSystem();
+    else if (v.mode === "system") goToGalaxy();
+  }, [backToSystem, goToGalaxy]);
+
+  // Mirror the current view into the URL so it can be shared/bookmarked.
+  useEffect(() => {
+    writeViewToURL(view);
+  }, [view]);
+
   const reducedMotion = usePrefersReducedMotion();
   // Lazy init is safe here: GalaxyMap is dynamically imported with ssr:false,
   // so this only ever runs in the browser.
@@ -213,14 +249,11 @@ export default function GalaxyMap() {
   // Esc / Backspace steps back: planet → system → galaxy.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" && e.key !== "Backspace") return;
-      const v = viewRef.current;
-      if (v.mode === "planet") backToSystem();
-      else if (v.mode === "system") goToGalaxy();
+      if (e.key === "Escape" || e.key === "Backspace") stepBack();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [backToSystem, goToGalaxy]);
+  }, [stepBack]);
 
   useEffect(() => {
     if (focusSystemId && backRef.current) {
@@ -256,6 +289,7 @@ export default function GalaxyMap() {
           dpr={[1, 2]}
           className="absolute inset-0"
           aria-label="Interactive 3D star chart of the Veilborn Galaxy"
+          onPointerMissed={stepBack}
           onCreated={({ gl }) => {
             gl.domElement.addEventListener(
               "webglcontextlost",

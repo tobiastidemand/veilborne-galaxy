@@ -224,7 +224,14 @@ const BODY_REACH: Record<BodyKind, number> = {
   anomaly: 1.35,
 };
 
+// Built once per system and kept for the session — revisiting a system reuses
+// its body configs (and their canvas textures) instead of rebuilding them.
+const bodyConfigCache = new Map<string, BodyConfig[]>();
+
 function buildBodies(system: StarSystemData): BodyConfig[] {
+  const cached = bodyConfigCache.get(system.id);
+  if (cached) return cached;
+
   const bodies = getSystemBodies(system);
   const n = bodies.length;
   // Spread bodies across a fixed shell regardless of count, so a crowded
@@ -232,7 +239,7 @@ function buildBodies(system: StarSystemData): BodyConfig[] {
   const inner = system.size * 1.6 + 1.1;
   const span = 5.0;
 
-  return bodies.map((body, i) => {
+  const configs = bodies.map((body, i) => {
     const kind = body.kind ?? "planet";
     const style = PLANET_STYLES[i % PLANET_STYLES.length];
     const seed = hashSeed(system.id + ":" + body.name);
@@ -261,6 +268,9 @@ function buildBodies(system: StarSystemData): BodyConfig[] {
       ring: planet && style === "gas" && rand(3) > 0.45,
     };
   });
+
+  bodyConfigCache.set(system.id, configs);
+  return configs;
 }
 
 /* --- per-kind 3D models ------------------------------------------- */
@@ -681,18 +691,9 @@ function OrbitingPlanets({
   selectedPlanet: string | null;
   onSelectPlanet: (systemId: string, bodyName: string) => void;
 }) {
+  // Cached per system (see buildBodies) so textures persist and aren't
+  // rebuilt each time the system is revisited.
   const planets = useMemo(() => buildBodies(system), [system]);
-
-  // Free the per-body canvas textures when the focused system changes.
-  useEffect(
-    () => () => {
-      planets.forEach((p) => {
-        p.map?.dispose();
-        p.clouds?.dispose();
-      });
-    },
-    [planets]
-  );
 
   return (
     <group>
@@ -1039,6 +1040,11 @@ export default function GalaxyScene({
   useEffect(() => {
     if (firstFlight.current) {
       firstFlight.current = false;
+      // Deep-linked straight to a system (?system=…): fly there on first mount.
+      if (focusSystemId) {
+        const system = systemById(focusSystemId);
+        flyTo(system.position, system.size, () => onArrive(system.id));
+      }
       return;
     }
     if (focusSystemId) {
