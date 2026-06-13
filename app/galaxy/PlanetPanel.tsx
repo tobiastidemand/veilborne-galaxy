@@ -84,7 +84,7 @@ export default function PlanetPanel({
       role="dialog"
       aria-label={shown ? `${shown.body.name} survey` : "Body survey"}
       aria-hidden={!open}
-      className="tome-panel tome-scroll fixed right-0 top-0 z-30 h-full w-[348px] overflow-y-auto border-l-2 border-[#c9a84c]/55 backdrop-blur-md"
+      className="tome-panel tome-scroll fixed right-0 top-0 z-30 h-full w-[min(360px,92vw)] overflow-y-auto border-l-2 border-[#c9a84c]/55 backdrop-blur-md"
     >
       {shown && (
         <div

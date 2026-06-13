@@ -1113,6 +1113,7 @@ export default function GalaxyScene({
         ref={controlsRef}
         makeDefault
         enableDamping
+        enablePan={false}
         dampingFactor={0.08}
         minDistance={5}
         maxDistance={95}

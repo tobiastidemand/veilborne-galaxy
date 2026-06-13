@@ -75,11 +75,18 @@ function Divider() {
 }
 
 /** Collapsible cartographer's key. Self-contained so toggling never re-renders the scene. */
-function Legend() {
-  const [open, setOpen] = useState(true);
+function Legend({ hideOnMobile }: { hideOnMobile: boolean }) {
+  // Open by default on desktop, collapsed on phones to stay out of the way.
+  const [open, setOpen] = useState(
+    () => window.matchMedia("(min-width: 768px)").matches
+  );
 
   return (
-    <div className="tome-panel tome-frame pointer-events-auto fixed bottom-5 left-5 z-40 hidden w-[262px] rounded-sm border border-[#c9a84c]/40 md:block">
+    <div
+      className={`tome-panel tome-frame pointer-events-auto fixed bottom-3 left-3 z-40 w-[262px] max-w-[calc(100vw-1.5rem)] rounded-sm border border-[#c9a84c]/40 sm:bottom-5 sm:left-5 sm:block ${
+        hideOnMobile ? "hidden" : ""
+      }`}
+    >
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors hover:text-[#f0d080]"
@@ -280,10 +287,10 @@ export default function GalaxyMap() {
       <header className="pointer-events-none fixed inset-x-0 top-0 z-40">
         <div className="flex items-start justify-between gap-4 border-b border-[#c9a84c]/35 bg-gradient-to-b from-[#0b0820]/92 to-[#0b0820]/45 px-6 py-3 backdrop-blur-sm">
           <div>
-            <h1 className="font-title text-2xl font-black tracking-[0.16em] text-[#f0d080] drop-shadow-[0_0_18px_rgba(240,208,128,0.25)]">
+            <h1 className="font-title text-lg font-black tracking-[0.14em] text-[#f0d080] drop-shadow-[0_0_18px_rgba(240,208,128,0.25)] sm:text-2xl sm:tracking-[0.16em]">
               The Veilborn Galaxy
             </h1>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] uppercase tracking-[0.22em] text-[#c9a84c]/70">
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] uppercase tracking-[0.18em] text-[#c9a84c]/70 sm:text-[11px] sm:tracking-[0.22em]">
               <span>Sector Omega-9</span>
               <span className="text-[#c9a84c]/40">✦</span>
               <span>Uncharted Territory</span>
@@ -313,17 +320,19 @@ export default function GalaxyMap() {
         </button>
       )}
 
-      <Legend />
+      <Legend hideOnMobile={focusSystemId !== null} />
 
-      {/* instructions */}
-      <div className="pointer-events-none fixed bottom-5 right-5 z-40 text-right">
-        <p className="font-display text-[10px] font-bold uppercase tracking-[0.28em] text-[#c9a84c]/55">
-          Click a system to survey
-        </p>
-        <p className="mt-0.5 text-[12px] italic tracking-wide text-[#e9e2d0]/35">
-          Drag to orbit · scroll to draw nearer
-        </p>
-      </div>
+      {/* instructions — only in the wide galaxy view */}
+      {!focusSystemId && (
+        <div className="pointer-events-none fixed bottom-3 right-3 z-40 max-w-[45vw] text-right sm:bottom-5 sm:right-5 sm:max-w-none">
+          <p className="font-display text-[10px] font-bold uppercase tracking-[0.24em] text-[#c9a84c]/55 sm:tracking-[0.28em]">
+            Select a system to survey
+          </p>
+          <p className="mt-0.5 text-[11px] italic tracking-wide text-[#e9e2d0]/35 sm:text-[12px]">
+            Drag to orbit · pinch or scroll to draw nearer
+          </p>
+        </div>
+      )}
 
       <SystemPanel
         system={panelSystem}

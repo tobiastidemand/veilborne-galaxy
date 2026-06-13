@@ -85,7 +85,7 @@ export default function SystemPanel({
       role="dialog"
       aria-label={shown ? `${shown.name} system survey` : "System survey"}
       aria-hidden={!open}
-      className="tome-panel tome-scroll fixed right-0 top-0 z-30 h-full w-[348px] overflow-y-auto border-l-2 border-[#c9a84c]/55 backdrop-blur-md"
+      className="tome-panel tome-scroll fixed right-0 top-0 z-30 h-full w-[min(360px,92vw)] overflow-y-auto border-l-2 border-[#c9a84c]/55 backdrop-blur-md"
     >
       {shown && (
         <div className="flex min-h-full flex-col gap-4 px-6 pb-10 pt-[4.75rem]">

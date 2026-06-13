@@ -6,11 +6,18 @@ const out = process.argv[3] ?? "scripts/shot.png";
 // actions: comma-separated, e.g. "click:800,430;wait:3500;click:980,360;wait:1200"
 const actions = process.argv[4] ?? "";
 
+const mobile = process.argv.includes("mobile");
+const vp = mobile
+  ? { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
+  : { width: 1600, height: 900 };
 const browser = await puppeteer.launch({
   executablePath: EDGE,
   headless: "new",
-  args: ["--enable-unsafe-swiftshader", "--window-size=1600,900"],
-  defaultViewport: { width: 1600, height: 900 },
+  args: [
+    "--enable-unsafe-swiftshader",
+    `--window-size=${vp.width},${vp.height}`,
+  ],
+  defaultViewport: vp,
 });
 
 const page = await browser.newPage();
