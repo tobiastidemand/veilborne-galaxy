@@ -14,6 +14,11 @@ const browser = await puppeteer.launch({
 });
 
 const page = await browser.newPage();
+if (process.argv[5] === "reduced") {
+  await page.emulateMediaFeatures([
+    { name: "prefers-reduced-motion", value: "reduce" },
+  ]);
+}
 const errors = [];
 page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
 page.on("console", (m) => {

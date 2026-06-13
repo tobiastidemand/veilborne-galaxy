@@ -42,10 +42,12 @@ function Divider() {
 export default function SystemPanel({
   system,
   open,
+  reducedMotion = false,
   onBack,
 }: {
   system: StarSystemData | null;
   open: boolean;
+  reducedMotion?: boolean;
   onBack: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -64,10 +66,10 @@ export default function SystemPanel({
     if (!panelRef.current) return;
     gsap.to(panelRef.current, {
       xPercent: open ? 0 : 100,
-      duration: 0.6,
+      duration: reducedMotion ? 0 : 0.6,
       ease: "power3.out",
     });
-  }, [open, shown]);
+  }, [open, shown, reducedMotion]);
 
   const chainStyle = shown
     ? CHAIN_MARKER[shown.chain.level] ?? { color: "#9a9a9a", opacity: 0.7 }
@@ -80,6 +82,9 @@ export default function SystemPanel({
   return (
     <aside
       ref={panelRef}
+      role="dialog"
+      aria-label={shown ? `${shown.name} system survey` : "System survey"}
+      aria-hidden={!open}
       className="tome-panel tome-scroll fixed right-0 top-0 z-30 h-full w-[348px] overflow-y-auto border-l-2 border-[#c9a84c]/55 backdrop-blur-md"
     >
       {shown && (

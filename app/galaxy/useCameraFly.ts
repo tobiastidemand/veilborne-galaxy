@@ -9,17 +9,21 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 export const HOME_CAMERA: [number, number, number] = [0, 20, 48];
 export const HOME_TARGET: [number, number, number] = [0, 0, 0];
 
-const FLY = { duration: 1.8, ease: "power3.inOut" } as const;
-
 /**
  * GSAP-driven camera flights between the wide galaxy view and individual
  * systems. Tweens both the camera position and the OrbitControls target.
+ * When `reducedMotion` is set, flights snap instantly.
  */
 export function useCameraFly(
-  controlsRef: React.RefObject<OrbitControlsImpl | null>
+  controlsRef: React.RefObject<OrbitControlsImpl | null>,
+  reducedMotion = false
 ) {
   const camera = useThree((state) => state.camera);
   const tweensRef = useRef<gsap.core.Tween[]>([]);
+  const FLY = {
+    duration: reducedMotion ? 0 : 1.8,
+    ease: "power3.inOut",
+  } as const;
 
   const kill = () => {
     tweensRef.current.forEach((t) => t.kill());
@@ -55,7 +59,8 @@ export function useCameraFly(
         gsap.to(controls.target, { x: target.x, y: target.y, z: target.z, ...FLY }),
       ];
     },
-    [camera, controlsRef]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [camera, controlsRef, reducedMotion]
   );
 
   const flyHome = useCallback(() => {
@@ -77,7 +82,8 @@ export function useCameraFly(
         ...FLY,
       }),
     ];
-  }, [camera, controlsRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camera, controlsRef, reducedMotion]);
 
   return { flyTo, flyHome };
 }

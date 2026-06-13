@@ -7,8 +7,45 @@ import gsap from "gsap";
 import GalaxyScene from "./GalaxyScene";
 import SystemPanel from "./SystemPanel";
 import PlanetPanel from "./PlanetPanel";
+import { CanvasErrorBoundary } from "./CanvasErrorBoundary";
+import { usePrefersReducedMotion } from "./useReducedMotion";
 import { SYSTEMS, getSystemBodies, systemById } from "./data";
 import { HOME_CAMERA } from "./useCameraFly";
+
+function hasWebGL(): boolean {
+  try {
+    const canvas = document.createElement("canvas");
+    return !!(
+      window.WebGLRenderingContext &&
+      (canvas.getContext("webgl2") || canvas.getContext("webgl"))
+    );
+  } catch {
+    return false;
+  }
+}
+
+function SceneFallback({ lost }: { lost: boolean }) {
+  return (
+    <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 bg-[#03020a] px-6 text-center">
+      <h1 className="font-title text-2xl font-black tracking-[0.16em] text-[#f0d080]">
+        The Veilborn Galaxy
+      </h1>
+      <p className="max-w-md text-sm leading-relaxed text-[#e9e2d0]/70">
+        {lost
+          ? "The astral projection collapsed — the graphics context was lost."
+          : "This vessel's instruments can't render the star chart. A browser with WebGL enabled is required to view the Veilborn Galaxy."}
+      </p>
+      {lost && (
+        <button
+          onClick={() => window.location.reload()}
+          className="border border-[#c9a84c]/50 px-4 py-2 font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#c9a84c] transition-colors hover:text-[#f0d080]"
+        >
+          Re-chart the Veil
+        </button>
+      )}
+    </div>
+  );
+}
 
 /**
  * Single source of truth for what the chart is showing. Every panel's
@@ -159,6 +196,25 @@ export default function GalaxyMap() {
     if (v.mode !== "galaxy" && v.systemId === id) setSystemArrived(true);
   }, []);
 
+  const reducedMotion = usePrefersReducedMotion();
+  // Lazy init is safe here: GalaxyMap is dynamically imported with ssr:false,
+  // so this only ever runs in the browser.
+  const [sceneFailed, setSceneFailed] = useState<"unsupported" | "lost" | null>(
+    () => (hasWebGL() ? null : "unsupported")
+  );
+
+  // Esc / Backspace steps back: planet → system → galaxy.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" && e.key !== "Backspace") return;
+      const v = viewRef.current;
+      if (v.mode === "planet") backToSystem();
+      else if (v.mode === "system") goToGalaxy();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [backToSystem, goToGalaxy]);
+
   useEffect(() => {
     if (focusSystemId && backRef.current) {
       gsap.fromTo(
@@ -183,22 +239,38 @@ export default function GalaxyMap() {
     view.mode === "planet" ? systemById(view.systemId).name : "";
   const planetPanelOpen = view.mode === "planet";
 
+  if (sceneFailed) return <SceneFallback lost={sceneFailed === "lost"} />;
+
   return (
     <div className="relative h-dvh w-full overflow-hidden bg-[#03020a] font-body text-white">
-      <Canvas
-        camera={{ position: HOME_CAMERA, fov: 50, near: 0.1, far: 400 }}
-        dpr={[1, 2]}
-        className="absolute inset-0"
-      >
-        <GalaxyScene
-          focusSystemId={focusSystemId}
-          selectedPlanet={selectedPlanet}
-          flightNonce={flightNonce}
-          onSelectSystem={selectSystem}
-          onSelectPlanet={selectPlanet}
-          onArrive={handleArrive}
-        />
-      </Canvas>
+      <CanvasErrorBoundary onError={() => setSceneFailed("unsupported")}>
+        <Canvas
+          camera={{ position: HOME_CAMERA, fov: 50, near: 0.1, far: 400 }}
+          dpr={[1, 2]}
+          className="absolute inset-0"
+          aria-label="Interactive 3D star chart of the Veilborn Galaxy"
+          onCreated={({ gl }) => {
+            gl.domElement.addEventListener(
+              "webglcontextlost",
+              (e) => {
+                e.preventDefault();
+                setSceneFailed("lost");
+              },
+              { once: true }
+            );
+          }}
+        >
+          <GalaxyScene
+            focusSystemId={focusSystemId}
+            selectedPlanet={selectedPlanet}
+            flightNonce={flightNonce}
+            reducedMotion={reducedMotion}
+            onSelectSystem={selectSystem}
+            onSelectPlanet={selectPlanet}
+            onArrive={handleArrive}
+          />
+        </Canvas>
+      </CanvasErrorBoundary>
 
       {/* lamplight vignette + scanlines */}
       <div className="vignette pointer-events-none fixed inset-0 z-20" />
@@ -256,12 +328,14 @@ export default function GalaxyMap() {
       <SystemPanel
         system={panelSystem}
         open={systemPanelOpen}
+        reducedMotion={reducedMotion}
         onBack={goToGalaxy}
       />
       <PlanetPanel
         body={planetBody}
         systemName={planetSystemName}
         open={planetPanelOpen}
+        reducedMotion={reducedMotion}
         onBack={backToSystem}
       />
     </div>

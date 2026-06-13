@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Billboard, Html, Line, OrbitControls, Stars } from "@react-three/drei";
+import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import * as THREE from "three";
 import gsap from "gsap";
 import type { OrbitControls as OrbitControlsImpl, Line2 } from "three-stdlib";
+
+import { MotionContext, useReducedMotion } from "./useReducedMotion";
 
 import {
   CHAIN_MARKER,
@@ -152,8 +155,10 @@ function NebulaGlow() {
 
 function JumpLane({ from, to }: { from: StarSystemData; to: StarSystemData }) {
   const ref = useRef<Line2>(null);
+  const reduced = useReducedMotion();
 
   useFrame((_, delta) => {
+    if (reduced) return;
     const material = ref.current?.material as
       | { dashOffset: number }
       | undefined;
@@ -501,11 +506,12 @@ function MirrorModel({ cfg }: { cfg: BodyConfig }) {
 function AnomalyModel({ cfg }: { cfg: BodyConfig }) {
   const pulseRef = useRef<THREE.Group>(null);
   const glow = useMemo(() => makeRadialTexture(cfg.body.color, 1), [cfg.body.color]);
+  const reduced = useReducedMotion();
 
   useEffect(() => () => glow.dispose(), [glow]);
 
   useFrame(({ clock }) => {
-    const t = clock.elapsedTime;
+    const t = reduced ? 0 : clock.elapsedTime;
     const p = 1 + Math.sin(t * 1.6 + cfg.phase) * 0.12;
     if (pulseRef.current) {
       pulseRef.current.scale.setScalar(p);
@@ -583,11 +589,12 @@ function Planet({
   const spinRef = useRef<THREE.Group>(null);
   const scaleRef = useRef<THREE.Group>(null);
   const [hovered, setHovered] = useState(false);
+  const reduced = useReducedMotion();
 
   const reach = cfg.size * BODY_REACH[cfg.kind];
 
   useFrame(({ clock }) => {
-    const t = clock.elapsedTime;
+    const t = reduced ? 0 : clock.elapsedTime;
     const a = t * cfg.speed + cfg.phase;
     posRef.current?.position.set(
       Math.cos(a) * cfg.radius,
@@ -600,8 +607,8 @@ function Planet({
   useEffect(() => {
     if (!scaleRef.current) return;
     const s = hovered || selected ? 1.28 : 1;
-    gsap.to(scaleRef.current.scale, { x: s, y: s, z: s, duration: 0.2 });
-  }, [hovered, selected]);
+    gsap.to(scaleRef.current.scale, { x: s, y: s, z: s, duration: reduced ? 0 : 0.2 });
+  }, [hovered, selected, reduced]);
 
   useEffect(() => {
     if (!hovered) return;
@@ -729,8 +736,10 @@ function BlackHoleCore({ system }: { system: StarSystemData }) {
   const discRef = useRef<THREE.Mesh>(null);
   const outerRef = useRef<THREE.Mesh>(null);
   const haloMap = useMemo(() => makeRingTexture("#e84daa"), []);
+  const reduced = useReducedMotion();
 
   useFrame((_, delta) => {
+    if (reduced) return;
     if (discRef.current) discRef.current.rotation.z += delta * 0.8;
     if (outerRef.current) outerRef.current.rotation.z -= delta * 0.35;
   });
@@ -819,10 +828,12 @@ function BeamCones({
 function PulsarBeam({ system }: { system: StarSystemData }) {
   const beamRef = useRef<THREE.Group>(null);
   const beamMap = useMemo(() => makeBeamTexture(system.color), [system.color]);
+  const reduced = useReducedMotion();
 
   useEffect(() => () => beamMap.dispose(), [beamMap]);
 
   useFrame(({ clock }) => {
+    if (reduced) return;
     if (beamRef.current) beamRef.current.rotation.y = clock.elapsedTime * 0.7;
   });
 
@@ -838,9 +849,10 @@ function PulsarBeam({ system }: { system: StarSystemData }) {
 function BinaryPair({ system }: { system: StarSystemData }) {
   const aRef = useRef<THREE.Mesh>(null);
   const bRef = useRef<THREE.Mesh>(null);
+  const reduced = useReducedMotion();
 
   useFrame(({ clock }) => {
-    const a = clock.elapsedTime * 0.5;
+    const a = (reduced ? 0 : clock.elapsedTime) * 0.5;
     const r = system.size * 0.75;
     aRef.current?.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
     bRef.current?.position.set(-Math.cos(a) * r, 0, -Math.sin(a) * r);
@@ -877,13 +889,14 @@ function StarSystem({
   const coreRef = useRef<THREE.Group>(null);
   const lightRef = useRef<THREE.PointLight>(null);
   const [hovered, setHovered] = useState(false);
+  const reduced = useReducedMotion();
   const phase = useMemo(() => system.position[0] * 1.3 + system.position[2], [system]);
 
   const marker = CHAIN_MARKER[system.chain.level];
   const isBlackHole = system.kind === "blackhole";
 
   useFrame(({ clock }) => {
-    const t = clock.elapsedTime;
+    const t = reduced ? 0 : clock.elapsedTime;
     const g = groupRef.current;
     if (g) {
       g.position.y = system.position[1] + Math.sin(t * 0.4 + phase) * 0.35;
@@ -898,8 +911,8 @@ function StarSystem({
   useEffect(() => {
     if (!coreRef.current) return;
     const s = hovered ? 1.2 : 1;
-    gsap.to(coreRef.current.scale, { x: s, y: s, z: s, duration: 0.2 });
-  }, [hovered]);
+    gsap.to(coreRef.current.scale, { x: s, y: s, z: s, duration: reduced ? 0 : 0.2 });
+  }, [hovered, reduced]);
 
   useEffect(() => {
     document.body.style.cursor = hovered ? "pointer" : "auto";
@@ -1002,6 +1015,7 @@ export default function GalaxyScene({
   focusSystemId,
   selectedPlanet,
   flightNonce,
+  reducedMotion,
   onSelectSystem,
   onSelectPlanet,
   onArrive,
@@ -1009,13 +1023,14 @@ export default function GalaxyScene({
   focusSystemId: string | null;
   selectedPlanet: string | null;
   flightNonce: number;
+  reducedMotion: boolean;
   onSelectSystem: (id: string) => void;
   onSelectPlanet: (systemId: string, bodyName: string) => void;
   onArrive: (id: string) => void;
 }) {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const lastInteraction = useRef(0);
-  const { flyTo, flyHome } = useCameraFly(controlsRef);
+  const { flyTo, flyHome } = useCameraFly(controlsRef, reducedMotion);
   const firstFlight = useRef(true);
 
   // Drive the camera off `flightNonce` so re-selecting the same system still
@@ -1038,6 +1053,7 @@ export default function GalaxyScene({
     const controls = controlsRef.current;
     if (!controls) return;
     controls.autoRotate =
+      !reducedMotion &&
       !focusSystemId &&
       performance.now() - lastInteraction.current > IDLE_RESUME_MS;
 
@@ -1061,7 +1077,7 @@ export default function GalaxyScene({
   );
 
   return (
-    <>
+    <MotionContext.Provider value={reducedMotion}>
       <color attach="background" args={["#03020a"]} />
       <fog attach="fog" args={["#03020a", 80, 220]} />
       <ambientLight intensity={0.12} />
@@ -1111,6 +1127,17 @@ export default function GalaxyScene({
           lastInteraction.current = performance.now();
         }}
       />
-    </>
+
+      {/* additive glow — makes stars, coronas, the beam and anomalies radiant */}
+      <EffectComposer>
+        <Bloom
+          intensity={0.85}
+          luminanceThreshold={0.18}
+          luminanceSmoothing={0.5}
+          mipmapBlur
+          radius={0.7}
+        />
+      </EffectComposer>
+    </MotionContext.Provider>
   );
 }

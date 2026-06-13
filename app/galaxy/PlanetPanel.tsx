@@ -15,11 +15,13 @@ export default function PlanetPanel({
   body,
   systemName,
   open,
+  reducedMotion = false,
   onBack,
 }: {
   body: CelestialBody | null;
   systemName: string;
   open: boolean;
+  reducedMotion?: boolean;
   onBack: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -44,10 +46,10 @@ export default function PlanetPanel({
     if (!panelRef.current) return;
     gsap.to(panelRef.current, {
       xPercent: open ? 0 : 100,
-      duration: 0.6,
+      duration: reducedMotion ? 0 : 0.6,
       ease: "power3.out",
     });
-  }, [open]);
+  }, [open, reducedMotion]);
 
   // Cross-fade the inner content when switching to a different body.
   useEffect(() => {
@@ -59,7 +61,7 @@ export default function PlanetPanel({
     const el = contentRef.current;
     // Only animate when switching planets on an already-open panel; otherwise
     // the panel's own slide-in carries the transition.
-    if (!el || !open || !wasOpen) {
+    if (!el || !open || !wasOpen || reducedMotion) {
       setShown({ body, systemName });
       return;
     }
@@ -74,11 +76,14 @@ export default function PlanetPanel({
         { opacity: 0, x: 20 },
         { opacity: 1, x: 0, duration: 0.32, ease: "power3.out" }
       );
-  }, [body, systemName, open, shown]);
+  }, [body, systemName, open, shown, reducedMotion]);
 
   return (
     <aside
       ref={panelRef}
+      role="dialog"
+      aria-label={shown ? `${shown.body.name} survey` : "Body survey"}
+      aria-hidden={!open}
       className="tome-panel tome-scroll fixed right-0 top-0 z-30 h-full w-[348px] overflow-y-auto border-l-2 border-[#c9a84c]/55 backdrop-blur-md"
     >
       {shown && (
