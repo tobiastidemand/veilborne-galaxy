@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
-import { Bloom, EffectComposer } from "@react-three/postprocessing";
+import {
+  Bloom,
+  ChromaticAberration,
+  EffectComposer,
+  Noise,
+  Vignette,
+} from "@react-three/postprocessing";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
@@ -86,6 +92,8 @@ export default function GalaxyScene({
     []
   );
 
+  const caOffset = useMemo(() => new THREE.Vector2(0.0006, 0.0006), []);
+
   return (
     <MotionContext.Provider value={reducedMotion}>
       <color attach="background" args={["#03020a"]} />
@@ -139,7 +147,7 @@ export default function GalaxyScene({
         }}
       />
 
-      {/* additive glow — makes stars, coronas, the beam and anomalies radiant */}
+      {/* additive glow + a touch of old-chart film treatment */}
       <EffectComposer>
         <Bloom
           intensity={0.85}
@@ -148,6 +156,9 @@ export default function GalaxyScene({
           mipmapBlur
           radius={0.7}
         />
+        <ChromaticAberration offset={caOffset} radialModulation={false} modulationOffset={0} />
+        <Vignette eskil={false} offset={0.32} darkness={0.72} />
+        <Noise opacity={0.04} premultiply />
       </EffectComposer>
     </MotionContext.Provider>
   );

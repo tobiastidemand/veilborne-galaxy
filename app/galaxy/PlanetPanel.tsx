@@ -16,12 +16,14 @@ export default function PlanetPanel({
   systemName,
   open,
   reducedMotion = false,
+  accent = "#c9a84c",
   onBack,
 }: {
   body: CelestialBody | null;
   systemName: string;
   open: boolean;
   reducedMotion?: boolean;
+  accent?: string;
   onBack: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -84,7 +86,8 @@ export default function PlanetPanel({
       role="dialog"
       aria-label={shown ? `${shown.body.name} survey` : "Body survey"}
       aria-hidden={!open}
-      className="tome-panel tome-scroll fixed right-0 top-0 z-[45] h-full w-[min(360px,92vw)] overflow-y-auto border-l-2 border-[#c9a84c]/55 backdrop-blur-md"
+      style={{ borderLeftColor: `${accent}aa` }}
+      className="tome-panel tome-scroll fixed right-0 top-0 z-[45] h-full w-[min(360px,92vw)] overflow-y-auto border-l-2 backdrop-blur-md"
     >
       {shown && (
         <div
@@ -102,7 +105,10 @@ export default function PlanetPanel({
             <div className="text-[10px] uppercase tracking-[0.32em] text-[#c9a84c]/45">
               {shown.systemName} · Celestial Body
             </div>
-            <h2 className="mt-1.5 font-title text-[2rem] font-black leading-[1.05] text-[#f0d080] drop-shadow-[0_0_16px_rgba(240,208,128,0.25)]">
+            <h2
+              className="mt-1.5 font-title text-[2rem] font-black leading-[1.05] text-[#f0d080]"
+              style={{ textShadow: `0 0 18px ${accent}66` }}
+            >
               {shown.body.name}
               {shown.body.highlight && (
                 <span className="ml-2 text-[#f0d080]">★</span>

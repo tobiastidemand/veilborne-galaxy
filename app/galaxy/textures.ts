@@ -29,6 +29,75 @@ export function makeRadialTexture(
   return texture;
 }
 
+/**
+ * Two-tone star corona: a white-hot core blending out to the star's colour and
+ * fading to nothing. Reads hotter and more dimensional than a flat tint.
+ */
+export function makeCoronaTexture(color: string, size = 256): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const half = size / 2;
+  const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
+  const c = new THREE.Color(color);
+  const rgb = `${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(
+    c.b * 255
+  )}`;
+  grad.addColorStop(0, "rgba(255,250,240,0.95)");
+  grad.addColorStop(0.14, `rgba(${rgb},0.85)`);
+  grad.addColorStop(0.4, `rgba(${rgb},0.28)`);
+  grad.addColorStop(0.7, `rgba(${rgb},0.07)`);
+  grad.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
+ * Wispy nebula cloud built from many low-alpha soft puffs (deterministic per
+ * seed), giving internal filament structure instead of a flat radial blob.
+ */
+export function makeNebulaTexture(
+  color: string,
+  seed: number,
+  size = 512
+): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const c = new THREE.Color(color);
+  const rgb = `${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(
+    c.b * 255
+  )}`;
+  let s = seed >>> 0;
+  const rand = () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const half = size / 2;
+  const puffs = 110 + Math.floor(rand() * 50);
+  for (let i = 0; i < puffs; i++) {
+    const ang = rand() * Math.PI * 2;
+    const dist = Math.pow(rand(), 0.6) * half;
+    const x = half + Math.cos(ang) * dist;
+    const y = half + Math.sin(ang) * dist * 0.78;
+    const r = size * (0.04 + rand() * 0.16);
+    const a = 0.015 + rand() * 0.05;
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, `rgba(${rgb},${a})`);
+    grad.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 /* ------------------------------------------------------------------ */
 /* Procedural planet surfaces                                         */
 /* ------------------------------------------------------------------ */

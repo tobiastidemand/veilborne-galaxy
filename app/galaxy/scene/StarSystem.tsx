@@ -7,10 +7,15 @@ import * as THREE from "three";
 import gsap from "gsap";
 
 import { type StarSystemData } from "../data";
-import { makeBeamTexture, makeRadialTexture, makeRingTexture } from "../textures";
+import {
+  makeBeamTexture,
+  makeCoronaTexture,
+  makeRingTexture,
+} from "../textures";
 import { useReducedMotion } from "../useReducedMotion";
 import { NO_RAYCAST } from "./shared";
 import { OrbitingPlanets } from "./bodies";
+import { StarMesh } from "./StarMesh";
 
 function CoronaSprite({
   color,
@@ -21,7 +26,7 @@ function CoronaSprite({
   scale: number;
   opacity?: number;
 }) {
-  const map = useMemo(() => makeRadialTexture(color, 1), [color]);
+  const map = useMemo(() => makeCoronaTexture(color), [color]);
   return (
     <sprite scale={[scale, scale, 1]} raycast={NO_RAYCAST}>
       <spriteMaterial
@@ -82,6 +87,20 @@ function BlackHoleCore({ system }: { system: StarSystemData }) {
           map={haloMap}
           transparent
           opacity={0.5}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </sprite>
+      {/* bright photon ring hugging the event horizon */}
+      <sprite
+        scale={[system.size * 2.7, system.size * 2.7, 1]}
+        raycast={NO_RAYCAST}
+      >
+        <spriteMaterial
+          map={haloMap}
+          color="#ffd9f4"
+          transparent
+          opacity={0.95}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
@@ -150,8 +169,8 @@ function PulsarBeam({ system }: { system: StarSystemData }) {
 }
 
 function BinaryPair({ system }: { system: StarSystemData }) {
-  const aRef = useRef<THREE.Mesh>(null);
-  const bRef = useRef<THREE.Mesh>(null);
+  const aRef = useRef<THREE.Group>(null);
+  const bRef = useRef<THREE.Group>(null);
   const reduced = useReducedMotion();
 
   useFrame(({ clock }) => {
@@ -163,14 +182,12 @@ function BinaryPair({ system }: { system: StarSystemData }) {
 
   return (
     <group>
-      <mesh ref={aRef}>
-        <sphereGeometry args={[system.size * 0.55, 32, 32]} />
-        <meshBasicMaterial color="#ffaa44" />
-      </mesh>
-      <mesh ref={bRef}>
-        <sphereGeometry args={[system.size * 0.42, 32, 32]} />
-        <meshBasicMaterial color="#ff8855" />
-      </mesh>
+      <group ref={aRef}>
+        <StarMesh color="#ffaa44" radius={system.size * 0.55} />
+      </group>
+      <group ref={bRef}>
+        <StarMesh color="#ff8855" radius={system.size * 0.42} />
+      </group>
     </group>
   );
 }
@@ -252,10 +269,7 @@ export function StarSystem({
             {system.kind === "binary" ? (
               <BinaryPair system={system} />
             ) : (
-              <mesh>
-                <sphereGeometry args={[system.size * 0.65, 48, 48]} />
-                <meshBasicMaterial color={system.color} />
-              </mesh>
+              <StarMesh color={system.color} radius={system.size * 0.65} />
             )}
             <CoronaSprite color={system.color} scale={system.size * 5.5} />
             {system.kind === "pulsar" && <PulsarBeam system={system} />}

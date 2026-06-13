@@ -278,6 +278,7 @@ export default function GalaxyMap() {
   const planetSystemName =
     view.mode === "planet" ? systemById(view.systemId).name : "";
   const planetPanelOpen = view.mode === "planet";
+  const accent = panelSystem?.color ?? "#c9a84c";
 
   if (sceneFailed) return <SceneFallback lost={sceneFailed === "lost"} />;
 
@@ -313,8 +314,7 @@ export default function GalaxyMap() {
         </Canvas>
       </CanvasErrorBoundary>
 
-      {/* lamplight vignette + scanlines */}
-      <div className="vignette pointer-events-none fixed inset-0 z-20" />
+      {/* scanlines (vignette handled in the postprocessing pass) */}
       <div className="scanlines pointer-events-none fixed inset-0 z-50" />
 
       {/* header cartouche */}
@@ -378,6 +378,7 @@ export default function GalaxyMap() {
         system={panelSystem}
         open={systemPanelOpen}
         reducedMotion={reducedMotion}
+        accent={accent}
         onBack={goToGalaxy}
       />
       <PlanetPanel
@@ -385,6 +386,7 @@ export default function GalaxyMap() {
         systemName={planetSystemName}
         open={planetPanelOpen}
         reducedMotion={reducedMotion}
+        accent={accent}
         onBack={backToSystem}
       />
     </div>

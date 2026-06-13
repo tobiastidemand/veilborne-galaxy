@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 
-import { makeRadialTexture } from "../textures";
+import { makeNebulaTexture } from "../textures";
 import { mulberry32, NO_RAYCAST } from "./shared";
 
 export function StarfieldExtra() {
@@ -57,9 +57,10 @@ export function StarfieldExtra() {
 export function NebulaGlow() {
   const textures = useMemo(
     () => ({
-      purple: makeRadialTexture("#1a0533", 1),
-      blue: makeRadialTexture("#0d1f3c", 1),
-      magenta: makeRadialTexture("#4d0e3c", 1),
+      purple: makeNebulaTexture("#2a0b52", 0x51a1),
+      blue: makeNebulaTexture("#0d2a52", 0x9c2f),
+      magenta: makeNebulaTexture("#5a103f", 0x33b7),
+      band: makeNebulaTexture("#241046", 0x7e10),
     }),
     []
   );
@@ -67,24 +68,40 @@ export function NebulaGlow() {
   const plumes: {
     map: THREE.Texture;
     position: [number, number, number];
-    scale: number;
+    scale: [number, number];
     opacity: number;
   }[] = [
-    { map: textures.purple, position: [0, -4, -55], scale: 130, opacity: 0.55 },
-    { map: textures.blue, position: [-30, 10, -65], scale: 95, opacity: 0.5 },
-    { map: textures.magenta, position: [28, -8, -60], scale: 90, opacity: 0.45 },
-    { map: textures.purple, position: [18, 14, -70], scale: 75, opacity: 0.4 },
-    { map: textures.blue, position: [12, -16, -50], scale: 60, opacity: 0.35 },
-    { map: textures.magenta, position: [-22, -2, -48], scale: 55, opacity: 0.3 },
+    { map: textures.purple, position: [0, -4, -55], scale: [150, 150], opacity: 0.6 },
+    { map: textures.blue, position: [-32, 10, -68], scale: [110, 110], opacity: 0.55 },
+    { map: textures.magenta, position: [30, -8, -62], scale: [100, 100], opacity: 0.5 },
+    { map: textures.purple, position: [20, 16, -74], scale: [86, 86], opacity: 0.42 },
+    { map: textures.blue, position: [14, -18, -50], scale: [66, 66], opacity: 0.4 },
+    { map: textures.magenta, position: [-24, -2, -46], scale: [60, 60], opacity: 0.34 },
   ];
 
   return (
     <>
+      {/* far galaxy band, stretched across the void for depth */}
+      <sprite
+        position={[6, -6, -120]}
+        scale={[420, 150, 1]}
+        rotation={[0, 0, -0.32]}
+        raycast={NO_RAYCAST}
+      >
+        <spriteMaterial
+          map={textures.band}
+          transparent
+          opacity={0.4}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </sprite>
+
       {plumes.map((p, i) => (
         <sprite
           key={i}
           position={p.position}
-          scale={[p.scale, p.scale, 1]}
+          scale={[p.scale[0], p.scale[1], 1]}
           raycast={NO_RAYCAST}
         >
           <spriteMaterial

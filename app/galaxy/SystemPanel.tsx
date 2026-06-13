@@ -43,11 +43,13 @@ export default function SystemPanel({
   system,
   open,
   reducedMotion = false,
+  accent = "#c9a84c",
   onBack,
 }: {
   system: StarSystemData | null;
   open: boolean;
   reducedMotion?: boolean;
+  accent?: string;
   onBack: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -85,7 +87,8 @@ export default function SystemPanel({
       role="dialog"
       aria-label={shown ? `${shown.name} system survey` : "System survey"}
       aria-hidden={!open}
-      className="tome-panel tome-scroll fixed right-0 top-0 z-[45] h-full w-[min(360px,92vw)] overflow-y-auto border-l-2 border-[#c9a84c]/55 backdrop-blur-md"
+      style={{ borderLeftColor: `${accent}aa` }}
+      className="tome-panel tome-scroll fixed right-0 top-0 z-[45] h-full w-[min(360px,92vw)] overflow-y-auto border-l-2 backdrop-blur-md"
     >
       {shown && (
         <div className="flex min-h-full flex-col gap-4 px-6 pb-10 pt-6">
@@ -100,7 +103,10 @@ export default function SystemPanel({
             <div className="text-[10px] uppercase tracking-[0.32em] text-[#c9a84c]/45">
               {shown.designation}
             </div>
-            <h2 className="mt-1.5 font-title text-[2rem] font-black leading-[1.05] text-[#f0d080] drop-shadow-[0_0_16px_rgba(240,208,128,0.25)]">
+            <h2
+              className="mt-1.5 font-title text-[2rem] font-black leading-[1.05] text-[#f0d080]"
+              style={{ textShadow: `0 0 18px ${accent}66` }}
+            >
               {shown.name}
             </h2>
             <div className="mt-1.5 text-sm italic tracking-wide text-cyan-200/85">

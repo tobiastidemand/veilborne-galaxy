@@ -59,15 +59,6 @@ body {
   mix-blend-mode: overlay;
 }
 
-/* darkened edges, like lamplight on an old chart */
-.vignette {
-  background: radial-gradient(
-    ellipse at center,
-    transparent 52%,
-    rgba(3, 2, 10, 0.55) 100%
-  );
-}
-
 /* --- the illuminated-tome surface ------------------------------- */
 
 .tome-panel {

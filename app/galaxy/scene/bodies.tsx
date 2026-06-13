@@ -435,6 +435,7 @@ function OrbitingBody({
   const posRef = useRef<THREE.Group>(null);
   const spinRef = useRef<THREE.Group>(null);
   const scaleRef = useRef<THREE.Group>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const reduced = useReducedMotion();
 
@@ -449,6 +450,10 @@ function OrbitingBody({
       Math.sin(a) * cfg.radius
     );
     if (spinRef.current) spinRef.current.rotation.y = t * cfg.spin + cfg.phase;
+    if (ringRef.current) {
+      const pulse = reduced ? 1 : 1 + Math.sin(t * 3) * 0.06;
+      ringRef.current.scale.setScalar(pulse);
+    }
   });
 
   useEffect(() => {
@@ -495,7 +500,7 @@ function OrbitingBody({
       </mesh>
 
       {selected && (
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
           <ringGeometry args={[reach * 1.45, reach * 1.7, 48]} />
           <meshBasicMaterial
             color="#f0d080"
@@ -535,6 +540,20 @@ export function OrbitingPlanets({
 
   return (
     <group>
+      {/* faint orbital paths — reads as a cartographer's diagram */}
+      {planets.map((cfg) => (
+        <mesh key={cfg.body.name + "-orbit"} rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[cfg.radius - 0.012, cfg.radius + 0.012, 128]} />
+          <meshBasicMaterial
+            color="#c9a84c"
+            transparent
+            opacity={0.08}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
+
       {planets.map((cfg) => (
         <OrbitingBody
           key={cfg.body.name}
