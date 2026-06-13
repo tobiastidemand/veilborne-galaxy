@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SYSTEMS } from "./data";
 
@@ -8,6 +8,31 @@ const DISCOVERED_KEY = "veilborn.discovered";
 const PARTY_KEY = "veilborn.party";
 const TRAIL_KEY = "veilborn.trail";
 const DM_KEY = "veilborn.dm";
+
+const API = "/api/campaign";
+const POLL_MS = 4000;
+
+interface SharedState {
+  discovered: string[];
+  party: string | null;
+  trail: string[];
+  updatedAt: number;
+}
+
+// Canonical serialization so we can tell "changed vs last sync" cheaply.
+const snapshot = (d: Set<string>, p: string | null, t: string[]) =>
+  JSON.stringify({ d: [...d].sort(), p, t });
+
+function readDmFlag(): boolean {
+  const flag = new URLSearchParams(window.location.search).get("dm");
+  if (flag === "1") return true;
+  if (flag === "0") return false;
+  try {
+    return localStorage.getItem(DM_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 // Solara Prime is the Core — the known starting point of all expeditions.
 const SEED_DISCOVERED = ["solara-prime"];
@@ -57,6 +82,8 @@ export interface Campaign {
   setParty: (id: string) => void;
   reset: () => void;
   exitDm: () => void;
+  /** True once the shared server store has been reached at least once. */
+  shared: boolean;
 }
 
 /**
@@ -66,21 +93,100 @@ export interface Campaign {
 export function useCampaign(): Campaign {
   // Enter DM mode with ?dm=1 (or ?dm=0 to leave); it then persists on this
   // device so the DM doesn't have to keep the flag in the URL.
-  const [dmMode, setDmMode] = useState(() => {
-    const flag = new URLSearchParams(window.location.search).get("dm");
-    if (flag === "1") return true;
-    if (flag === "0") return false;
-    try {
-      return localStorage.getItem(DM_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
+  const [dmMode, setDmMode] = useState(readDmFlag);
   const [discovered, setDiscovered] = useState<Set<string>>(loadSet);
   const [party, setPartyState] = useState<string | null>(() =>
     loadString(PARTY_KEY)
   );
   const [trail, setTrail] = useState<string[]>(loadTrail);
+  // DM gates pushing until it has reconciled with the server once.
+  const [hydrated, setHydrated] = useState(() => !readDmFlag());
+  const [shared, setShared] = useState(false);
+
+  // Tracks the last state we synced (sent or received) so we don't echo it.
+  const remoteSnapRef = useRef("");
+  // Newest server timestamp a player has applied.
+  const appliedAtRef = useRef(0);
+
+  const applyShared = useCallback((data: SharedState) => {
+    const d = new Set<string>([...(data.discovered ?? []), "solara-prime"]);
+    const p = data.party ?? null;
+    const t = data.trail ?? [];
+    setDiscovered(d);
+    setPartyState(p);
+    setTrail(t);
+    remoteSnapRef.current = snapshot(d, p, t);
+    appliedAtRef.current = data.updatedAt;
+  }, []);
+
+  // DM: reconcile with the shared store once on mount, then push thereafter.
+  useEffect(() => {
+    if (!dmMode) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(API);
+        const data = res.ok ? ((await res.json()) as SharedState) : null;
+        if (!cancelled && data) {
+          setShared(true);
+          if (data.updatedAt > 0) applyShared(data);
+        }
+      } catch {
+        /* offline — fall back to local only */
+      }
+      if (!cancelled) setHydrated(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dmMode, applyShared]);
+
+  // DM: push local changes to the shared store (debounced).
+  useEffect(() => {
+    if (!dmMode || !hydrated) return;
+    const snap = snapshot(discovered, party, trail);
+    if (snap === remoteSnapRef.current) return;
+    const id = setTimeout(async () => {
+      try {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ discovered: [...discovered], party, trail }),
+        });
+        if (res.ok) {
+          remoteSnapRef.current = snap;
+          setShared(true);
+        }
+      } catch {
+        /* offline */
+      }
+    }, 400);
+    return () => clearTimeout(id);
+  }, [dmMode, hydrated, discovered, party, trail]);
+
+  // Players: poll the shared store and apply anything newer.
+  useEffect(() => {
+    if (dmMode) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch(API);
+        if (!res.ok) return;
+        const data = (await res.json()) as SharedState;
+        if (cancelled) return;
+        setShared(true);
+        if (data.updatedAt > appliedAtRef.current) applyShared(data);
+      } catch {
+        /* offline */
+      }
+    };
+    poll();
+    const iv = setInterval(poll, POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(iv);
+    };
+  }, [dmMode, applyShared]);
 
   useEffect(() => {
     try {
@@ -155,5 +261,6 @@ export function useCampaign(): Campaign {
     setParty,
     reset,
     exitDm,
+    shared,
   };
 }

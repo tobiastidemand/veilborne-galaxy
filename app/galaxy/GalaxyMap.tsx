@@ -211,8 +211,21 @@ function DMConsole({
   return (
     <div className="tome-panel tome-scroll pointer-events-auto fixed left-3 top-[4.6rem] z-[46] max-h-[80vh] w-[272px] overflow-y-auto rounded-sm border border-[#7fe0ff]/45">
       <div className="flex items-center justify-between px-4 pb-1 pt-3">
-        <span className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-[#7fe0ff]">
+        <span className="flex items-center gap-2 font-display text-[11px] font-bold uppercase tracking-[0.22em] text-[#7fe0ff]">
           DM Console
+          <span
+            title={
+              campaign.shared
+                ? "Live — changes sync to players"
+                : "Local only — players won't see changes"
+            }
+            className={`h-1.5 w-1.5 rounded-full ${
+              campaign.shared ? "bg-[#7fff9f]" : "bg-[#ff9f40]"
+            }`}
+          />
+          <span className="text-[8px] font-normal tracking-[0.18em] text-[#e9e2d0]/40">
+            {campaign.shared ? "LIVE" : "LOCAL"}
+          </span>
         </span>
         <button
           onClick={onClose}
