@@ -194,6 +194,102 @@ function Legend({
   );
 }
 
+/** One-stop DM remote: reveal/hide every system, set the party, reset, exit. */
+function DMConsole({
+  campaign,
+  charted,
+  onFly,
+  onReset,
+  onClose,
+}: {
+  campaign: ReturnType<typeof useCampaign>;
+  charted: number;
+  onFly: (id: string) => void;
+  onReset: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="tome-panel tome-scroll pointer-events-auto fixed left-3 top-[4.6rem] z-[46] max-h-[80vh] w-[272px] overflow-y-auto rounded-sm border border-[#7fe0ff]/45">
+      <div className="flex items-center justify-between px-4 pb-1 pt-3">
+        <span className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-[#7fe0ff]">
+          DM Console
+        </span>
+        <button
+          onClick={onClose}
+          aria-label="Close DM console"
+          className="text-sm text-[#7fe0ff]/70 transition-colors hover:text-[#7fe0ff]"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="px-4 pb-4">
+        <div className="mb-2 font-display text-[9px] font-bold uppercase tracking-[0.28em] text-[#c9a84c]/60">
+          {charted} / {SYSTEMS.length} charted
+        </div>
+
+        <ul className="flex flex-col gap-1.5">
+          {SYSTEMS.map((s) => {
+            const shown = campaign.isDiscovered(s.id);
+            const isParty = campaign.party === s.id;
+            const dot = s.kind === "blackhole" ? "#e84daa" : s.color;
+            return (
+              <li key={s.id} className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: dot, boxShadow: `0 0 5px ${dot}` }}
+                />
+                <button
+                  onClick={() => onFly(s.id)}
+                  className="flex-1 truncate text-left text-[12px] text-[#e9e2d0]/80 transition-colors hover:text-[#f0d080]"
+                >
+                  {s.name}
+                </button>
+                <button
+                  onClick={() => campaign.toggleDiscovered(s.id)}
+                  title={shown ? "Hide from players" : "Reveal to players"}
+                  className={`rounded border px-1.5 py-0.5 font-display text-[8px] font-bold uppercase tracking-[0.12em] transition-colors ${
+                    shown
+                      ? "border-[#7fff9f]/40 text-[#7fff9f] hover:bg-[#7fff9f]/10"
+                      : "border-[#ff9f40]/40 text-[#ff9f40] hover:bg-[#ff9f40]/10"
+                  }`}
+                >
+                  {shown ? "Shown" : "Hidden"}
+                </button>
+                <button
+                  onClick={() => campaign.setParty(s.id)}
+                  title="Set party here"
+                  className={`px-1 text-[12px] leading-none transition-colors ${
+                    isParty
+                      ? "text-[#7fe0ff]"
+                      : "text-white/25 hover:text-[#7fe0ff]"
+                  }`}
+                >
+                  ◆
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/10 pt-3">
+          <button
+            onClick={onReset}
+            className="rounded border border-[#ff9f40]/40 px-2.5 py-1 font-display text-[9px] font-bold uppercase tracking-[0.18em] text-[#ff9f40]/80 transition-colors hover:text-[#ff9f40]"
+          >
+            ↺ Reset
+          </button>
+          <button
+            onClick={campaign.exitDm}
+            className="rounded border border-[#c9a84c]/40 px-2.5 py-1 font-display text-[9px] font-bold uppercase tracking-[0.18em] text-[#c9a84c] transition-colors hover:text-[#f0d080]"
+          >
+            Exit DM
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function GalaxyMap() {
   // Lazy init from the URL (client-only — GalaxyMap is dynamically ssr:false).
   const [view, setView] = useState<View>(readViewFromURL);
@@ -214,6 +310,7 @@ export default function GalaxyMap() {
 
   const campaign = useCampaign();
   const { dmMode, isDiscovered } = campaign;
+  const [dmConsoleOpen, setDmConsoleOpen] = useState(true);
 
   const focusSystemId = view.mode === "galaxy" ? null : view.systemId;
 
@@ -363,9 +460,12 @@ export default function GalaxyMap() {
             <h1 className="font-title text-lg font-black tracking-[0.14em] text-[#f0d080] drop-shadow-[0_0_18px_rgba(240,208,128,0.25)] sm:text-2xl sm:tracking-[0.16em]">
               The Veilborn Galaxy
               {dmMode && (
-                <span className="ml-2 align-middle rounded border border-[#7fe0ff]/50 px-1.5 py-0.5 font-display text-[9px] font-bold tracking-[0.22em] text-[#7fe0ff]">
-                  DM VIEW
-                </span>
+                <button
+                  onClick={() => setDmConsoleOpen((o) => !o)}
+                  className="pointer-events-auto ml-2 align-middle rounded border border-[#7fe0ff]/50 px-1.5 py-0.5 font-display text-[9px] font-bold tracking-[0.22em] text-[#7fe0ff] transition-colors hover:bg-[#7fe0ff]/10"
+                >
+                  ⌖ DM CONSOLE
+                </button>
               )}
             </h1>
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] uppercase tracking-[0.18em] text-[#c9a84c]/70 sm:text-[11px] sm:tracking-[0.22em]">
@@ -410,14 +510,15 @@ export default function GalaxyMap() {
         total={SYSTEMS.length}
       />
 
-      {/* DM-only: wipe campaign progress */}
-      {dmMode && (
-        <button
-          onClick={handleReset}
-          className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded border border-[#ff9f40]/40 bg-[#07051a]/80 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-[0.22em] text-[#ff9f40]/80 backdrop-blur-sm transition-colors hover:text-[#ff9f40]"
-        >
-          ↺ Reset campaign
-        </button>
+      {/* DM remote */}
+      {dmMode && dmConsoleOpen && (
+        <DMConsole
+          campaign={campaign}
+          charted={charted}
+          onFly={selectSystem}
+          onReset={handleReset}
+          onClose={() => setDmConsoleOpen(false)}
+        />
       )}
 
       {/* instructions — only in the wide galaxy view */}

@@ -7,6 +7,7 @@ import { SYSTEMS } from "./data";
 const DISCOVERED_KEY = "veilborn.discovered";
 const PARTY_KEY = "veilborn.party";
 const TRAIL_KEY = "veilborn.trail";
+const DM_KEY = "veilborn.dm";
 
 // Solara Prime is the Core — the known starting point of all expeditions.
 const SEED_DISCOVERED = ["solara-prime"];
@@ -55,6 +56,7 @@ export interface Campaign {
   toggleDiscovered: (id: string) => void;
   setParty: (id: string) => void;
   reset: () => void;
+  exitDm: () => void;
 }
 
 /**
@@ -62,9 +64,18 @@ export interface Campaign {
  * gated behind a `?dm=1` URL flag so shared player links stay spoiler-safe.
  */
 export function useCampaign(): Campaign {
-  const [dmMode] = useState(
-    () => new URLSearchParams(window.location.search).get("dm") === "1"
-  );
+  // Enter DM mode with ?dm=1 (or ?dm=0 to leave); it then persists on this
+  // device so the DM doesn't have to keep the flag in the URL.
+  const [dmMode, setDmMode] = useState(() => {
+    const flag = new URLSearchParams(window.location.search).get("dm");
+    if (flag === "1") return true;
+    if (flag === "0") return false;
+    try {
+      return localStorage.getItem(DM_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const [discovered, setDiscovered] = useState<Set<string>>(loadSet);
   const [party, setPartyState] = useState<string | null>(() =>
     loadString(PARTY_KEY)
@@ -96,6 +107,15 @@ export function useCampaign(): Campaign {
     }
   }, [trail]);
 
+  useEffect(() => {
+    try {
+      if (dmMode) localStorage.setItem(DM_KEY, "1");
+      else localStorage.removeItem(DM_KEY);
+    } catch {
+      /* ignore */
+    }
+  }, [dmMode]);
+
   const isDiscovered = useCallback((id: string) => discovered.has(id), [
     discovered,
   ]);
@@ -123,6 +143,8 @@ export function useCampaign(): Campaign {
     setTrail([]);
   }, []);
 
+  const exitDm = useCallback(() => setDmMode(false), []);
+
   return {
     dmMode,
     discovered,
@@ -132,5 +154,6 @@ export function useCampaign(): Campaign {
     toggleDiscovered,
     setParty,
     reset,
+    exitDm,
   };
 }
