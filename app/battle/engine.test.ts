@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { applyAbility, advanceBeat, commence, enemiesFire, unleashEpic } from "./engine";
+import { applyAbility, commence, enemiesFire, resolveTurn, startTurn, unleashEpic } from "./engine";
 import { computeLoadout } from "./shipBuilding";
 import { defaultBattle, freshChain, makeEnemy, type BattleState, type RoleId } from "./types";
 
@@ -74,15 +74,15 @@ describe("the Strike chain", () => {
 });
 
 describe("Sync → Epic", () => {
-  it("banks an Epic Chain on the 5th successful chain", () => {
+  it("banks an Epic Chain on the 3rd successful chain", () => {
     rollAlways(20);
     let { s } = setup();
     // Brace damage-control finishes always succeed — clean way to build the streak.
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 3; i++) {
       s = { ...s, beat: "brace", chain: freshChain() };
       s = applyAbility(s, "commander", "all-hands", { actor: "Cap" });
       s = applyAbility(s, "engineer", "damage-control", { actor: "Eng", repair: "hull" });
-      if (i < 5) {
+      if (i < 3) {
         expect(s.ship.sync).toBe(i);
         expect(s.ship.epicBanked).toBe(false);
       }
@@ -107,18 +107,44 @@ describe("Sync → Epic", () => {
   });
 });
 
-describe("beats", () => {
-  it("cycles strike → brace → cooldown → spool(+round)", () => {
+describe("the turn (initiative)", () => {
+  it("runs one chain per turn: chain → Rolls → next turn re-rolls initiative", () => {
     let { s } = setup();
-    expect(s.beat).toBe("strike");
-    s = advanceBeat(s); // → brace
-    expect(s.beat).toBe("brace");
-    s = advanceBeat(s); // → cooldown
-    expect(s.beat).toBe("cooldown");
+    expect(s.active).toBe(true);
+    expect(["strike", "brace"]).toContain(s.beat);
+    s = resolveTurn(s);
+    expect(s.beat).toBe("rolls");
     const round = s.round;
-    s = advanceBeat(s); // → spool, new round
-    expect(s.beat).toBe("spool");
+    s = startTurn(s);
     expect(s.round).toBe(round + 1);
+    expect(["strike", "brace"]).toContain(s.beat);
+    expect(s.initiativeRoll).not.toBeNull();
+  });
+
+  it("Speed decides initiative — fast crew Strikes, slow crew Braces", () => {
+    let fast = defaultBattle();
+    fast = { ...fast, ship: { ...fast.ship, speed: 50 }, enemies: [makeEnemy("X", 1, "line")] };
+    fast = startTurn(fast);
+    expect(fast.crewHasInitiative).toBe(true);
+    expect(fast.beat).toBe("strike");
+
+    let slow = defaultBattle();
+    slow = { ...slow, ship: { ...slow.ship, speed: 0 }, enemies: [{ ...makeEnemy("Y", 1, "line"), speed: 50 }] };
+    slow = startTurn(slow);
+    expect(slow.crewHasInitiative).toBe(false);
+    expect(slow.beat).toBe("brace");
+  });
+
+  it("the enemy only fires on a turn the crew Braced", () => {
+    rollAlways(20); // any incoming would crit if it fired
+    let s = defaultBattle();
+    s = { ...s, enemies: [makeEnemy("Z", 1, "line")], ship: { ...s.ship, shields: 0 } };
+    // crew has the initiative → resolve should NOT let the enemy fire
+    const struck = resolveTurn({ ...s, beat: "strike", crewHasInitiative: true });
+    expect(struck.ship.hull).toBe(s.ship.hull);
+    // crew braced → enemy fires
+    const braced = resolveTurn({ ...s, beat: "brace", crewHasInitiative: false });
+    expect(braced.ship.hull).toBeLessThan(s.ship.hull);
   });
 });
 
@@ -137,7 +163,7 @@ describe("ship building", () => {
 
     expect(computeLoadout({ frame: "bulwark", weapons: [], systems: [] }, 1).maxHull).toBe(22);
     expect(computeLoadout({ frame: "bulwark", weapons: [], systems: [] }, 1).armour).toBe(1);
-    expect(computeLoadout({ frame: "survey", weapons: [], systems: ["battle-choir"] }, 1).syncNeeded).toBe(4);
+    expect(computeLoadout({ frame: "survey", weapons: [], systems: ["battle-choir"] }, 1).syncNeeded).toBe(2);
     expect(computeLoadout({ frame: "lance", weapons: [], systems: [] }, 1).heavyPerLink).toBe(1);
 
     // three Spinal Lances (9 power) blows the Tier-1 budget of 6

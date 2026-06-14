@@ -25,6 +25,7 @@ export interface Frame {
   armour: number;
   concealStart: number;
   heavyPerLink: number;
+  speed: number; // drives Initiative
 }
 
 export const FRAMES: Record<FrameId, Frame> = {
@@ -33,35 +34,35 @@ export const FRAMES: Record<FrameId, Frame> = {
     name: "Survey Cutter",
     trait: "Versatile — +1 System slot.",
     hullDelta: 0, shieldDelta: 0, regenDelta: 0, powerDelta: 0,
-    weaponSlotDelta: 0, systemSlotDelta: 1, overcapDelta: 0, armour: 0, concealStart: 0, heavyPerLink: 0,
+    weaponSlotDelta: 0, systemSlotDelta: 1, overcapDelta: 0, armour: 0, concealStart: 0, heavyPerLink: 0, speed: 3,
   },
   bulwark: {
     id: "bulwark",
     name: "Bulwark",
     trait: "Armour — ignore the first 1 damage from each hit.",
     hullDelta: 6, shieldDelta: -2, regenDelta: 0, powerDelta: 0,
-    weaponSlotDelta: 0, systemSlotDelta: 0, overcapDelta: 0, armour: 1, concealStart: 0, heavyPerLink: 0,
+    weaponSlotDelta: 0, systemSlotDelta: 0, overcapDelta: 0, armour: 1, concealStart: 0, heavyPerLink: 0, speed: 2,
   },
   aegis: {
     id: "aegis",
     name: "Aegis",
     trait: "Shield-tank — +1 regen, deeper over-charge.",
     hullDelta: -4, shieldDelta: 4, regenDelta: 1, powerDelta: 0,
-    weaponSlotDelta: 0, systemSlotDelta: 0, overcapDelta: 3, armour: 0, concealStart: 0, heavyPerLink: 0,
+    weaponSlotDelta: 0, systemSlotDelta: 0, overcapDelta: 3, armour: 0, concealStart: 0, heavyPerLink: 0, speed: 2,
   },
   wraith: {
     id: "wraith",
     name: "Wraith",
     trait: "EW skirmisher — starts Concealed; +1 Weapon slot, −2 Power.",
     hullDelta: -4, shieldDelta: -2, regenDelta: 0, powerDelta: -2,
-    weaponSlotDelta: 1, systemSlotDelta: 0, overcapDelta: 0, armour: 0, concealStart: 2, heavyPerLink: 0,
+    weaponSlotDelta: 1, systemSlotDelta: 0, overcapDelta: 0, armour: 0, concealStart: 2, heavyPerLink: 0, speed: 5,
   },
   lance: {
     id: "lance",
     name: "Lance Runner",
     trait: "Glass cannon — heavy finishes +1 per link; −2 Hull.",
     hullDelta: -2, shieldDelta: -2, regenDelta: 0, powerDelta: 0,
-    weaponSlotDelta: 0, systemSlotDelta: 0, overcapDelta: 0, armour: 0, concealStart: 0, heavyPerLink: 1,
+    weaponSlotDelta: 0, systemSlotDelta: 0, overcapDelta: 0, armour: 0, concealStart: 0, heavyPerLink: 1, speed: 4,
   },
 };
 
@@ -91,7 +92,7 @@ export interface SystemDef {
 
 export const SYSTEMS: Record<SystemId, SystemDef> = {
   "command-suite": { id: "command-suite", name: "Command Suite", cost: 1, seat: "Commander", note: "Open +1; Extend twice/battle" },
-  "battle-choir": { id: "battle-choir", name: "Battle Choir", cost: 2, seat: "Commander", note: "Epic at Sync 4" },
+  "battle-choir": { id: "battle-choir", name: "Battle Choir", cost: 2, seat: "Commander", note: "Epic one Sync sooner" },
   maneuver: { id: "maneuver", name: "Maneuver Thrusters", cost: 1, seat: "Navigator", note: "Attack Vector / Evasive +1" },
   "slip-drive": { id: "slip-drive", name: "Slip Drive", cost: 2, seat: "Navigator", note: "Break Contact also clears a condition" },
   "reactor-tap": { id: "reactor-tap", name: "Reactor Tap", cost: 1, seat: "Engineer", note: "Overcharge / Reroute +1" },
@@ -123,6 +124,7 @@ export interface Loadout {
   overcap: number; // total shield over-charge headroom above maxShields
   armour: number;
   concealStart: number;
+  speed: number;
   // budget
   power: number;
   weaponSlots: number;
@@ -180,6 +182,7 @@ export function computeLoadout(build: BuildState, tier: number): Loadout {
     overcap: SHIELD_OVERCAP + frame.overcapDelta + (has("capacitor") ? 1 : 0),
     armour: frame.armour,
     concealStart: frame.concealStart,
+    speed: frame.speed,
     power,
     weaponSlots,
     systemSlots,
@@ -188,7 +191,7 @@ export function computeLoadout(build: BuildState, tier: number): Loadout {
     reasons,
     weaponTypes: weaponTypes.length ? weaponTypes : ["balanced"],
     hasFlak,
-    syncNeeded: has("battle-choir") ? 4 : SYNC_FOR_EPIC,
+    syncNeeded: has("battle-choir") ? Math.max(2, SYNC_FOR_EPIC - 1) : SYNC_FOR_EPIC,
     openBonus: has("command-suite") ? 1 : 0,
     extendUses: 1 + (has("command-suite") ? 1 : 0),
     navLinkBonus: has("maneuver") ? 1 : 0,

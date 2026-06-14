@@ -5,8 +5,8 @@ export type RoleId =
   | "sensor"
   | "gunner";
 
-/** The four beats of a round (v0.3 — "The Chain"). */
-export type Beat = "spool" | "strike" | "brace" | "cooldown";
+/** The four beats of a turn (v0.4 — "Initiative & the Chain"). */
+export type Beat = "initiative" | "strike" | "brace" | "rolls";
 export type ChainKind = "strike" | "brace";
 export type DamageType = "balanced" | "laser" | "missile" | "ap";
 export type Range = "boarding" | "close" | "medium" | "long";
@@ -27,6 +27,7 @@ export interface Enemy {
   tn: number;
   tier: number;
   atk: number;
+  speed: number; // drives Initiative
   conditions: Condition[];
 }
 
@@ -119,15 +120,18 @@ export interface BattleState {
     maxShields: number;
     shieldRegen: number;
     tier: number;
+    speed: number; // drives Initiative
     sync: number; // streak of successful chains; at SYNC_FOR_EPIC → bank an Epic
     epicBanked: boolean; // the Commander holds an Epic Chain, ready to unleash
-    // round-scoped Brace defences (set during Brace, consumed when enemies fire)
+    // turn-scoped Brace defences (set during Brace, consumed when enemies fire)
     evasion: number; // raises ship defence
     conceal: number; // penalty to incoming enemy rolls
     negate: number; // incoming hits the crew shoots down outright
-    extendUsed: boolean; // Commander's once-per-battle Extend
     conditions: Condition[];
   };
+  // this turn's initiative: true = crew Strikes (enemy braces); false = crew Braces (enemy strikes)
+  crewHasInitiative: boolean;
+  initiativeRoll: { crew: number; enemy: number } | null; // last roll, for display
   chain: ChainState;
   build: BuildState;
   roles: Record<RoleId, { claimedBy: string | null }>;
@@ -143,8 +147,8 @@ export const SHIP_DEFENCE_BASE = 10;
 export const CHAIN_CAP = 4; // finish scaling stops counting past this many links
 export const PER_LINK_HEAVY = 2; // Killing Blow, Reactor Lance
 export const PER_LINK_LIGHT = 1; // Strafing, Counter, Killbox, Damage Control, Ghost
-export const SYNC_FOR_EPIC = 5;
-export const CUT_BONUS = 2; // a Cut finisher gets +2 to its roll
+export const SYNC_FOR_EPIC = 3; // v0.4: rebalanced for one chain per turn
+export const SHIP_SPEED_BASE = 3; // default ship Speed (frames adjust it)
 
 export const DAMAGE_BASE: Record<DamageType, number> = {
   balanced: 2,
@@ -160,7 +164,7 @@ export const DAMAGE_LABEL: Record<DamageType, string> = {
   ap: "Lance (AP)",
 };
 
-export const BEATS: Beat[] = ["spool", "strike", "brace", "cooldown"];
+export const BEATS: Beat[] = ["initiative", "strike", "brace", "rolls"];
 export const RANGES: Range[] = ["boarding", "close", "medium", "long"];
 
 export const ROLES: {
@@ -201,7 +205,7 @@ export function defaultBattle(): BattleState {
   return {
     active: false,
     round: 0,
-    beat: "spool",
+    beat: "initiative",
     range: "close",
     ship: {
       hull: t.hull,
@@ -210,14 +214,16 @@ export function defaultBattle(): BattleState {
       maxShields: t.shields,
       shieldRegen: t.regen,
       tier: 1,
+      speed: SHIP_SPEED_BASE,
       sync: 0,
       epicBanked: false,
       evasion: 0,
       conceal: 0,
       negate: 0,
-      extendUsed: false,
       conditions: [],
     },
+    crewHasInitiative: true,
+    initiativeRoll: null,
     chain: freshChain(),
     build: { frame: DEFAULT_BUILD.frame, weapons: [...DEFAULT_BUILD.weapons], systems: [...DEFAULT_BUILD.systems] },
     roles: {
@@ -237,13 +243,16 @@ export function makeEnemy(name: string, tier: number, size: EnemySize): Enemy {
   const base = ENEMY_BY_TIER[tier] ?? ENEMY_BY_TIER[1];
   const { shields } = base;
   let { hull, tn, atk } = base;
+  let speed = tier + 1; // baseline: light foes lead the initiative
   if (size === "skirmisher") {
     hull = Math.max(1, Math.round(hull / 2));
     tn -= 2;
+    speed += 2;
   } else if (size === "elite") {
     hull *= 2;
     tn += 2;
     atk += 1;
+    speed -= 1;
   }
   return {
     id: crypto.randomUUID(),
@@ -255,6 +264,7 @@ export function makeEnemy(name: string, tier: number, size: EnemySize): Enemy {
     tn,
     tier,
     atk,
+    speed,
     conditions: [],
   };
 }

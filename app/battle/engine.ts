@@ -1,8 +1,6 @@
 import { loadoutOf } from "./shipBuilding";
 import {
-  BEATS,
   CHAIN_CAP,
-  CUT_BONUS,
   DAMAGE_BASE,
   DAMAGE_LABEL,
   DEGREE_STEP,
@@ -69,7 +67,6 @@ export interface ActionCtx {
 
 interface RunOpts {
   links: number; // chain length driving finish scaling
-  cutBonus: number; // +2 if finishing early (a Cut)
 }
 
 export interface Ability {
@@ -104,7 +101,7 @@ function attack(
   const crit = die >= critRange;
   const marked = hasCond(enemy.conditions, "marked");
   const breached = hasCond(enemy.conditions, "breached");
-  const total = die + s.ship.tier + h.toHit + (marked ? 2 : 0) + o.cutBonus;
+  const total = die + s.ship.tier + h.toHit + (marked ? 2 : 0);
   const tn = enemy.tn - h.tnDown - (breached ? 2 : 0);
   const label = DAMAGE_LABEL[type];
 
@@ -541,7 +538,7 @@ export function applyAbility(s: BattleState, roleId: RoleId, abilityId: string, 
       ...s,
       chain: { ...freshChain(), kind: ability.chain, open: true, opener: roleId, acted: [roleId], length: 1 },
     };
-    return ability.run(base, ctx, { links: 0, cutBonus: 0 }).state;
+    return ability.run(base, ctx, { links: 0 }).state;
   }
 
   // Link / Finish require an open chain of the matching kind
@@ -551,7 +548,7 @@ export function applyAbility(s: BattleState, roleId: RoleId, abilityId: string, 
   const links = s.chain.epic ? CHAIN_CAP : s.chain.length;
 
   if (ability.kind === "link") {
-    const res = ability.run(s, ctx, { links, cutBonus: 0 });
+    const res = ability.run(s, ctx, { links });
     return {
       ...res.state,
       chain: { ...res.state.chain, acted: [...res.state.chain.acted, roleId], length: res.state.chain.length + 1 },
@@ -559,11 +556,7 @@ export function applyAbility(s: BattleState, roleId: RoleId, abilityId: string, 
   }
 
   // Finish
-  const claimedUnacted = (Object.keys(s.roles) as RoleId[]).filter(
-    (r) => s.roles[r].claimedBy && !s.chain.acted.includes(r) && r !== roleId
-  ).length;
-  const cut = !s.chain.epic && claimedUnacted > 0;
-  const res = ability.run(s, ctx, { links, cutBonus: cut ? CUT_BONUS : 0 });
+  const res = ability.run(s, ctx, { links });
   let ns = {
     ...res.state,
     chain: { ...res.state.chain, acted: [...res.state.chain.acted, roleId], length: res.state.chain.length + 1 },
@@ -587,7 +580,6 @@ export function applyAbility(s: BattleState, roleId: RoleId, abilityId: string, 
   } else if (s.ship.sync > 0) {
     ns = log({ ...ns, ship: { ...ns.ship, sync: 0 } }, `Finisher fell short — Sync resets.`);
   }
-  if (cut) ns = log(ns, `(Cut — finished early for +${CUT_BONUS}.)`);
   return ns;
 }
 
@@ -606,40 +598,56 @@ export function unleashEpic(s: BattleState): BattleState {
 
 /* --- beats --------------------------------------------------------------- */
 
-function beatBanner(beat: BattleState["beat"]): string {
-  switch (beat) {
-    case "strike":
-      return "Strike Chain — the Commander opens. Build the combo.";
-    case "brace":
-      return "Brace Chain — the enemy moves. Weather it together.";
-    case "cooldown":
-      return "Cool Down — conditions resolve.";
-    default:
-      return "Spool Up.";
-  }
-}
-
-function enterSpool(s: BattleState): BattleState {
+/**
+ * Start a new turn: upkeep (shield regen, clear turn-scoped defences, fresh
+ * chain), then roll **Initiative** (`d20 + Speed`). The winner Strikes, the loser
+ * Braces — so the crew builds exactly one chain this turn.
+ */
+export function startTurn(s: BattleState): BattleState {
   const round = s.round + 1;
   const shields = clamp(s.ship.shields + s.ship.shieldRegen, 0, s.ship.maxShields);
-  return log(
-    {
-      ...s,
-      round,
-      beat: "spool",
-      chain: freshChain(),
-      ship: { ...s.ship, shields, evasion: 0, conceal: 0, negate: 0 },
-    },
-    `Round ${round} — Spool Up: shields regen +${s.ship.shieldRegen}.`
-  );
+
+  const crewTotal = d20() + s.ship.speed;
+  const enemySpeed = s.enemies.reduce((m, e) => Math.max(m, e.speed), 0);
+  const enemyTier = s.enemies.reduce((m, e) => Math.max(m, e.tier), 0);
+  const enemyTotal = s.enemies.length ? d20() + enemySpeed : 0;
+  const crewHasInitiative =
+    s.enemies.length === 0 ||
+    crewTotal > enemyTotal ||
+    (crewTotal === enemyTotal && s.ship.tier >= enemyTier);
+
+  const base: BattleState = {
+    ...s,
+    round,
+    beat: crewHasInitiative ? "strike" : "brace",
+    crewHasInitiative,
+    initiativeRoll: { crew: crewTotal, enemy: enemyTotal },
+    chain: freshChain(),
+    ship: { ...s.ship, shields, evasion: 0, conceal: 0, negate: 0 },
+  };
+
+  const line = !s.enemies.length
+    ? `Turn ${round} — Initiative uncontested: the crew strikes. Build the Strike chain.`
+    : crewHasInitiative
+    ? `Turn ${round} — Initiative: crew ${crewTotal} vs enemy ${enemyTotal} → CREW STRIKES. Build the Strike chain.`
+    : `Turn ${round} — Initiative: crew ${crewTotal} vs enemy ${enemyTotal} → enemy strikes; CREW BRACES. Build the Brace chain.`;
+  return log(base, line);
 }
 
-export function advanceBeat(s: BattleState): BattleState {
-  const i = BEATS.indexOf(s.beat);
-  const next = BEATS[(i + 1) % BEATS.length];
-  if (next === "spool") return enterSpool(s);
-  if (next === "cooldown") return resolveCooldown({ ...s, beat: "cooldown" });
-  return log({ ...s, beat: next, chain: freshChain() }, beatBanner(next));
+/**
+ * Resolve the turn (the Rolls beat): the two chains are read against each other.
+ * If the crew braced, the enemy was the attacker — they fire now, into the
+ * crew's defences. Then conditions tick down. The GM then starts the next turn.
+ */
+export function resolveTurn(s: BattleState): BattleState {
+  let state: BattleState = { ...s, beat: "rolls" };
+  if (!s.crewHasInitiative && s.enemies.length) {
+    state = log(state, "Rolls — the enemy presses its attack into the brace.");
+    state = enemiesFire(state);
+  } else {
+    state = log(state, "Rolls — the crew's strike resolves; the enemy was bracing.");
+  }
+  return resolveCooldown(state);
 }
 
 function resolveCooldown(s: BattleState): BattleState {
@@ -666,8 +674,8 @@ function resolveCooldown(s: BattleState): BattleState {
     ship: { ...s.ship, hull: shipHull, conditions: shipConditions },
     enemies,
   };
-  if (shipBurning || burnedEnemy) state = log(state, "Cool Down: burning takes its toll.");
-  return log(state, "Cool Down: conditions tick down.");
+  if (shipBurning || burnedEnemy) state = log(state, "End of turn: burning takes its toll.");
+  return log(state, "End of turn: conditions tick down.");
 }
 
 /* --- GM: the enemy turn (resolved during the Brace beat) ----------------- */
@@ -715,32 +723,33 @@ export function enemiesFire(s: BattleState): BattleState {
 
 export function commence(s: BattleState): BattleState {
   const lo = loadoutOf(s);
-  return log(
-    {
-      ...s,
-      active: true,
-      round: 1,
-      beat: "strike",
-      chain: freshChain(),
-      ship: {
-        ...s.ship,
-        // apply the current build to the sheet
-        maxHull: lo.maxHull,
-        hull: lo.maxHull,
-        maxShields: lo.maxShields,
-        shields: lo.maxShields,
-        shieldRegen: lo.shieldRegen,
-        conceal: lo.concealStart, // Wraith frame starts Concealed
-        evasion: 0,
-        negate: 0,
-        sync: 0,
-        epicBanked: false,
-        extendUsed: false,
-        conditions: [],
-      },
+  let ns: BattleState = {
+    ...s,
+    active: true,
+    round: 0,
+    chain: freshChain(),
+    ship: {
+      ...s.ship,
+      // apply the current build to the sheet
+      maxHull: lo.maxHull,
+      hull: lo.maxHull,
+      maxShields: lo.maxShields,
+      shields: lo.maxShields,
+      shieldRegen: lo.shieldRegen,
+      speed: lo.speed,
+      conceal: 0,
+      evasion: 0,
+      negate: 0,
+      sync: 0,
+      epicBanked: false,
+      conditions: [],
     },
-    `Battle commences — ${frameLabel(s)} to stations. Strike Chain: the Commander opens.`
-  );
+  };
+  ns = log(ns, `Battle commences — ${frameLabel(s)} to stations.`);
+  ns = startTurn(ns);
+  // Wraith frame: enter the first turn already Concealed.
+  if (lo.concealStart > 0) ns = { ...ns, ship: { ...ns.ship, conceal: lo.concealStart } };
+  return ns;
 }
 
 function frameLabel(s: BattleState): string {

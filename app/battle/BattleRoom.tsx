@@ -6,11 +6,11 @@ import { useState } from "react";
 import { RoleCard } from "./RoleCard";
 import { useBattle } from "./useBattle";
 import {
-  advanceBeat,
   applyAbility,
   commence,
   endBattle,
-  enemiesFire,
+  resolveTurn,
+  startTurn,
   unleashEpic,
   type Ability,
   type ActionCtx,
@@ -33,10 +33,10 @@ import {
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
 const BEAT_LABEL: Record<Beat, string> = {
-  spool: "Spool Up",
+  initiative: "Initiative",
   strike: "Strike Chain",
   brace: "Brace Chain",
-  cooldown: "Cool Down",
+  rolls: "Rolls",
 };
 
 function Bar({ label, value, max, color, soft }: { label: string; value: number; max: number; color: string; soft?: number }) {
@@ -134,11 +134,19 @@ export default function BattleRoom() {
               Battle Stations
             </h1>
             <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-[#c9a84c]/70">
-              <span>Round {state.round}</span>
+              <span>Turn {state.round}</span>
               <span className="text-[#c9a84c]/40">·</span>
               <span>Tier {state.ship.tier}</span>
               <span className="text-[#c9a84c]/40">·</span>
-              <span>{state.range} range</span>
+              <span>Speed {state.ship.speed}</span>
+              {state.active && (
+                <>
+                  <span className="text-[#c9a84c]/40">·</span>
+                  <span className={state.crewHasInitiative ? "text-[#7fff9f]" : "text-[#ff6b6b]"}>
+                    {state.crewHasInitiative ? "crew strikes" : "crew braces"}
+                  </span>
+                </>
+              )}
               {dm && <span className="rounded border border-[#7fe0ff]/50 px-1.5 py-0.5 text-[9px] font-bold text-[#7fe0ff]">DM</span>}
             </p>
           </div>
@@ -347,8 +355,10 @@ export default function BattleRoom() {
                 </Dm>
               ) : (
                 <>
-                  <Dm onClick={() => update(advanceBeat)}>▶ Next beat</Dm>
-                  {state.beat === "brace" && <Dm onClick={() => update(enemiesFire)}>✦ Enemies fire</Dm>}
+                  {(state.beat === "strike" || state.beat === "brace") && (
+                    <Dm onClick={() => update(resolveTurn)}>▶ Resolve turn</Dm>
+                  )}
+                  {state.beat === "rolls" && <Dm onClick={() => update(startTurn)}>↻ Next turn (roll Initiative)</Dm>}
                   {canUnleash && <Dm onClick={() => update(unleashEpic)}>★ Unleash Epic</Dm>}
                   <Dm onClick={() => update(endBattle)}>✕ End battle</Dm>
                 </>
