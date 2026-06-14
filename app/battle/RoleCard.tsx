@@ -3,9 +3,8 @@
 import { useState } from "react";
 
 import { availableAbilities, type ActionCtx, type Ability } from "./engine";
+import { loadoutOf } from "./shipBuilding";
 import { DAMAGE_LABEL, ROLES, type BattleState, type DamageType, type RoleId } from "./types";
-
-const WEAPONS: DamageType[] = ["balanced", "laser", "missile", "ap"];
 
 const KIND_BADGE: Record<Ability["kind"], { label: string; cls: string }> = {
   open: { label: "Open", cls: "border-[#f0d080]/60 text-[#f0d080]" },
@@ -32,7 +31,9 @@ export function RoleCard({
   const slot = state.roles[id];
   const mine = !!crewName && slot.claimedBy === crewName;
   const abilities = availableAbilities(state, id);
+  const weaponTypes = loadoutOf(state).weaponTypes;
   const [weapon, setWeapon] = useState<DamageType>("balanced");
+  const activeWeapon = weaponTypes.includes(weapon) ? weapon : weaponTypes[0];
 
   const canAct = state.active && mine;
 
@@ -99,19 +100,19 @@ export function RoleCard({
                   {header}
                   <p className="text-[10px] italic leading-snug text-white/35">{a.hint}</p>
                   <div className="flex flex-wrap gap-1">
-                    {WEAPONS.map((w) => (
+                    {weaponTypes.map((w) => (
                       <button
                         key={w}
                         onClick={() => setWeapon(w)}
                         className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${
-                          weapon === w ? "border-[#ff6b6b] text-[#ff6b6b]" : "border-white/15 text-white/45 hover:text-white/80"
+                          activeWeapon === w ? "border-[#ff6b6b] text-[#ff6b6b]" : "border-white/15 text-white/45 hover:text-white/80"
                         }`}
                       >
                         {DAMAGE_LABEL[w]}
                       </button>
                     ))}
                   </div>
-                  <TargetRow state={state} accent="#ff6b6b" onPick={(targetId) => onAct(a, { targetId, weapon })} />
+                  <TargetRow state={state} accent="#ff6b6b" onPick={(targetId) => onAct(a, { targetId, weapon: activeWeapon })} />
                 </div>
               );
             }

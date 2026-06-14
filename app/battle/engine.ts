@@ -1,3 +1,4 @@
+import { loadoutOf } from "./shipBuilding";
 import {
   BEATS,
   CHAIN_CAP,
@@ -8,10 +9,7 @@ import {
   PER_LINK_HEAVY,
   PER_LINK_LIGHT,
   RANGES,
-  SHIELD_OVERCAP,
-  SHIP_BY_TIER,
   SHIP_DEFENCE_BASE,
-  SYNC_FOR_EPIC,
   freshChain,
   type BattleState,
   type ChainKind,
@@ -35,7 +33,7 @@ const addCond = (list: Condition[], kind: ConditionKind, rounds: number): Condit
   ...list.filter((c) => c.kind !== kind),
   { kind, rounds },
 ];
-const shieldCap = (s: BattleState) => s.ship.maxShields + SHIELD_OVERCAP;
+const shieldCap = (s: BattleState) => s.ship.maxShields + loadoutOf(s).overcap;
 
 /** Resolve typed damage against a shields/hull pair. */
 function resolveDamage(
@@ -182,7 +180,7 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       kind: "open",
       needsTarget: true,
       run: (s, c) => {
-        const t = s.ship.tier;
+        const t = s.ship.tier + loadoutOf(s).openBonus;
         const ns = bumpHandoff(
           { ...s, chain: { ...s.chain, targetId: c.targetId ?? null } },
           { toHit: s.chain.handoff.toHit + t, tnDown: s.chain.handoff.tnDown + 1 }
@@ -201,7 +199,7 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       chain: "brace",
       kind: "open",
       run: (s, c) => {
-        const t = s.ship.tier;
+        const t = s.ship.tier + loadoutOf(s).openBonus;
         const ns = bumpHandoff({ ...s, ship: { ...s.ship, evasion: s.ship.evasion + t } }, {
           defense: s.chain.handoff.defense + t,
         });
@@ -217,10 +215,13 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       role: "navigator",
       chain: "strike",
       kind: "link",
-      run: (s, c) => ({
-        state: log(bumpHandoff(s, { toHit: s.chain.handoff.toHit + 2 }), `${c.actor} swings to a clean vector — chain +2 to hit.`),
-        success: true,
-      }),
+      run: (s, c) => {
+        const b = 2 + loadoutOf(s).navLinkBonus;
+        return {
+          state: log(bumpHandoff(s, { toHit: s.chain.handoff.toHit + b }), `${c.actor} swings to a clean vector — chain +${b} to hit.`),
+          success: true,
+        };
+      },
     },
     {
       id: "strafing-run",
@@ -239,10 +240,13 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       role: "navigator",
       chain: "brace",
       kind: "link",
-      run: (s, c) => ({
-        state: log({ ...s, ship: { ...s.ship, evasion: s.ship.evasion + 2 } }, `${c.actor} flies evasive — +2 defence.`),
-        success: true,
-      }),
+      run: (s, c) => {
+        const b = 2 + loadoutOf(s).navLinkBonus;
+        return {
+          state: log({ ...s, ship: { ...s.ship, evasion: s.ship.evasion + b } }, `${c.actor} flies evasive — +${b} defence.`),
+          success: true,
+        };
+      },
     },
     {
       id: "break-contact",
@@ -252,15 +256,19 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       chain: "brace",
       kind: "finish",
       run: (s, c, o) => {
+        const lo = loadoutOf(s);
         const i = Math.min(RANGES.length - 1, RANGES.indexOf(s.range) + 1);
         const range = RANGES[i];
+        // Slip Drive: also shake off one ship condition.
+        const conditions = lo.breakContactCleanse ? s.ship.conditions.slice(1) : s.ship.conditions;
         const ns = {
           ...s,
           range,
-          ship: { ...s.ship, evasion: s.ship.evasion + 2, negate: s.ship.negate + 1 },
+          ship: { ...s.ship, evasion: s.ship.evasion + 2, negate: s.ship.negate + 1, conditions },
         };
+        const cleansed = lo.breakContactCleanse && s.ship.conditions.length > 0 ? " (Slip Drive sheds a condition)" : "";
         return {
-          state: log(ns, `${c.actor} breaks contact to ${range} range — the run is spoiled. [chain ${Math.min(o.links, CHAIN_CAP)}]`),
+          state: log(ns, `${c.actor} breaks contact to ${range} range — the run is spoiled.${cleansed} [chain ${Math.min(o.links, CHAIN_CAP)}]`),
           success: true,
         };
       },
@@ -274,10 +282,13 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       role: "engineer",
       chain: "strike",
       kind: "link",
-      run: (s, c) => ({
-        state: log(bumpHandoff(s, { effectStep: s.chain.handoff.effectStep + 1 }), `${c.actor} overcharges the line — chain +1 effect.`),
-        success: true,
-      }),
+      run: (s, c) => {
+        const b = 1 + loadoutOf(s).engineerLinkBonus;
+        return {
+          state: log(bumpHandoff(s, { effectStep: s.chain.handoff.effectStep + b }), `${c.actor} overcharges the line — chain +${b} effect.`),
+          success: true,
+        };
+      },
     },
     {
       id: "reactor-lance",
@@ -287,7 +298,7 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       chain: "strike",
       kind: "finish",
       needsTarget: true,
-      run: (s, c, o) => attack(s, c, o, "ap", PER_LINK_HEAVY, { disableOnHit: true }),
+      run: (s, c, o) => attack(s, c, o, "ap", PER_LINK_HEAVY + loadoutOf(s).heavyPerLink, { disableOnHit: true }),
     },
     {
       id: "reroute",
@@ -296,13 +307,16 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       role: "engineer",
       chain: "brace",
       kind: "link",
-      run: (s, c) => ({
-        state: log(
-          { ...s, ship: { ...s.ship, shields: clamp(s.ship.shields + 2, 0, shieldCap(s)) } },
-          `${c.actor} reroutes to shields — +2.`
-        ),
-        success: true,
-      }),
+      run: (s, c) => {
+        const b = 2 + loadoutOf(s).engineerLinkBonus;
+        return {
+          state: log(
+            { ...s, ship: { ...s.ship, shields: clamp(s.ship.shields + b, 0, shieldCap(s)) } },
+            `${c.actor} reroutes to shields — +${b}.`
+          ),
+          success: true,
+        };
+      },
     },
     {
       id: "damage-control",
@@ -313,7 +327,7 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       kind: "finish",
       repairChoice: true,
       run: (s, c, o) => {
-        const amount = 3 + PER_LINK_LIGHT * Math.min(o.links, CHAIN_CAP);
+        const amount = 3 + PER_LINK_LIGHT * Math.min(o.links, CHAIN_CAP) + loadoutOf(s).damageControlFlat;
         if (c.repair === "shield") {
           return {
             state: log(
@@ -343,11 +357,14 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       kind: "link",
       needsTarget: true,
       run: (s, c) => {
+        const lo = loadoutOf(s);
         const ns = bumpHandoff(markEnemy(s, c.targetId, "marked", 2), {
           ignoreShields: true,
           tnDown: s.chain.handoff.tnDown + 2,
+          toHit: s.chain.handoff.toHit + lo.targetLockToHit,
         });
-        return { state: log(ns, `${c.actor} locks ${enemyName(ns, c.targetId)} — weak points exposed.`), success: true };
+        const arr = lo.targetLockToHit > 0 ? ` (+${lo.targetLockToHit} to hit)` : "";
+        return { state: log(ns, `${c.actor} locks ${enemyName(ns, c.targetId)} — weak points exposed.${arr}`), success: true };
       },
     },
     {
@@ -367,10 +384,13 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       role: "sensor",
       chain: "brace",
       kind: "link",
-      run: (s, c) => ({
-        state: log({ ...s, ship: { ...s.ship, conceal: s.ship.conceal + 2 } }, `${c.actor} blurs the ship — incoming −2.`),
-        success: true,
-      }),
+      run: (s, c) => {
+        const b = 2 + loadoutOf(s).blurBonus;
+        return {
+          state: log({ ...s, ship: { ...s.ship, conceal: s.ship.conceal + b } }, `${c.actor} blurs the ship — incoming −${b}.`),
+          success: true,
+        };
+      },
     },
     {
       id: "ghost",
@@ -380,7 +400,7 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       chain: "brace",
       kind: "finish",
       run: (s, c, o) => {
-        const n = 1 + Math.floor(Math.min(o.links, CHAIN_CAP) / 2);
+        const n = 1 + Math.floor(Math.min(o.links, CHAIN_CAP) / 2) + loadoutOf(s).ghostBonus;
         return {
           state: log({ ...s, ship: { ...s.ship, negate: s.ship.negate + n } }, `${c.actor} ghosts the ship — ${n} incoming hit(s) will miss.`),
           success: true,
@@ -415,7 +435,7 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       kind: "finish",
       needsTarget: true,
       weapon: true,
-      run: (s, c, o) => attack(s, c, o, c.weapon ?? "balanced", PER_LINK_HEAVY),
+      run: (s, c, o) => attack(s, c, o, c.weapon ?? "balanced", PER_LINK_HEAVY + loadoutOf(s).killingBlowPerLink + loadoutOf(s).heavyPerLink),
     },
     {
       id: "point-defense",
@@ -424,10 +444,13 @@ export const ROLE_KIT: Record<RoleId, Ability[]> = {
       role: "gunner",
       chain: "brace",
       kind: "link",
-      run: (s, c) => ({
-        state: log({ ...s, ship: { ...s.ship, negate: s.ship.negate + 1 } }, `${c.actor} works point defense — one incoming hit will be intercepted.`),
-        success: true,
-      }),
+      run: (s, c) => {
+        const n = loadoutOf(s).pdNegate;
+        return {
+          state: log({ ...s, ship: { ...s.ship, negate: s.ship.negate + n } }, `${c.actor} works point defense — ${n} incoming hit(s) will be intercepted.`),
+          success: true,
+        };
+      },
     },
     {
       id: "counter-volley",
@@ -554,11 +577,12 @@ export function applyAbility(s: BattleState, roleId: RoleId, abilityId: string, 
   // Sync bookkeeping on a normal Finisher.
   ns = { ...ns, chain: { ...ns.chain, done: true } };
   if (res.success) {
+    const need = loadoutOf(s).syncNeeded;
     const next = s.ship.sync + 1;
-    if (next >= SYNC_FOR_EPIC) {
+    if (next >= need) {
       ns = log({ ...ns, ship: { ...ns.ship, sync: 0, epicBanked: true } }, `✦ PERFECT SYNC — the crew banks an Epic Chain!`);
     } else {
-      ns = log({ ...ns, ship: { ...ns.ship, sync: next } }, `Chain lands — Sync ${next}/${SYNC_FOR_EPIC}.`);
+      ns = log({ ...ns, ship: { ...ns.ship, sync: next } }, `Chain lands — Sync ${next}/${need}.`);
     }
   } else if (s.ship.sync > 0) {
     ns = log({ ...ns, ship: { ...ns.ship, sync: 0 } }, `Finisher fell short — Sync resets.`);
@@ -650,6 +674,7 @@ function resolveCooldown(s: BattleState): BattleState {
 
 export function enemiesFire(s: BattleState): BattleState {
   let state = s;
+  const armour = loadoutOf(s).armour;
   const defence = SHIP_DEFENCE_BASE + state.ship.evasion;
   for (const e of state.enemies) {
     if (hasCond(e.conditions, "disabled")) {
@@ -669,6 +694,7 @@ export function enemiesFire(s: BattleState): BattleState {
     }
     let dmg = e.atk + degrees(total, defence);
     if (crit) dmg *= 2;
+    if (armour > 0) dmg = Math.max(0, dmg - armour); // Bulwark frame
     const breached = hasCond(state.ship.conditions, "breached");
     const res = resolveDamage(state.ship.shields, state.ship.hull, "balanced", dmg, breached);
     state = {
@@ -688,7 +714,7 @@ export function enemiesFire(s: BattleState): BattleState {
 /* --- GM: commence / end -------------------------------------------------- */
 
 export function commence(s: BattleState): BattleState {
-  const t = SHIP_BY_TIER[s.ship.tier] ?? SHIP_BY_TIER[1];
+  const lo = loadoutOf(s);
   return log(
     {
       ...s,
@@ -698,17 +724,27 @@ export function commence(s: BattleState): BattleState {
       chain: freshChain(),
       ship: {
         ...s.ship,
-        shields: Math.min(s.ship.maxShields, Math.max(s.ship.shields, t.shields)),
+        // apply the current build to the sheet
+        maxHull: lo.maxHull,
+        hull: lo.maxHull,
+        maxShields: lo.maxShields,
+        shields: lo.maxShields,
+        shieldRegen: lo.shieldRegen,
+        conceal: lo.concealStart, // Wraith frame starts Concealed
         evasion: 0,
-        conceal: 0,
         negate: 0,
         sync: 0,
         epicBanked: false,
         extendUsed: false,
+        conditions: [],
       },
     },
-    "Battle commences — crew to stations. Strike Chain: the Commander opens."
+    `Battle commences — ${frameLabel(s)} to stations. Strike Chain: the Commander opens.`
   );
+}
+
+function frameLabel(s: BattleState): string {
+  return loadoutOf(s).concealStart > 0 ? "the cloaked vessel" : "the vessel";
 }
 
 export function endBattle(s: BattleState): BattleState {

@@ -15,16 +15,19 @@ import {
   type Ability,
   type ActionCtx,
 } from "./engine";
+import { FRAMES, SYSTEMS, WEAPONS, computeLoadout } from "./shipBuilding";
 import {
   BEATS,
   ROLES,
-  SHIELD_OVERCAP,
-  SYNC_FOR_EPIC,
   makeEnemy,
   type Beat,
+  type BattleState,
   type Condition,
   type EnemySize,
+  type FrameId,
   type RoleId,
+  type SystemId,
+  type WeaponId,
 } from "./types";
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
@@ -110,6 +113,7 @@ export default function BattleRoom() {
     update((s) => ({ ...s, roles: { ...s.roles, [id]: { ...s.roles[id], claimedBy } } }));
 
   const ch = state.chain;
+  const loadout = computeLoadout(state.build, state.ship.tier);
   const iAmCommander = state.roles.commander.claimedBy === crew && !!crew;
   const canUnleash = state.ship.epicBanked && (state.beat === "strike" || state.beat === "brace") && !ch.open;
 
@@ -212,14 +216,14 @@ export default function BattleRoom() {
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Bar label="Hull" value={state.ship.hull} max={state.ship.maxHull} color="#ff8855" />
-                <Bar label="Shields" value={state.ship.shields} max={state.ship.maxShields + SHIELD_OVERCAP} soft={state.ship.maxShields} color="#7fe0ff" />
+                <Bar label="Shields" value={state.ship.shields} max={state.ship.maxShields + loadout.overcap} soft={state.ship.maxShields} color="#7fe0ff" />
               </div>
 
               {/* sync meter */}
               <div className="mt-3 flex items-center gap-2">
                 <span className="text-[10px] uppercase tracking-[0.16em] text-[#c9a84c]/70">Sync</span>
                 <div className="flex gap-1">
-                  {Array.from({ length: SYNC_FOR_EPIC }).map((_, i) => (
+                  {Array.from({ length: loadout.syncNeeded }).map((_, i) => (
                     <span
                       key={i}
                       className={`h-2 w-5 rounded-sm border ${
@@ -237,6 +241,9 @@ export default function BattleRoom() {
                 </div>
               )}
             </section>
+
+            {/* drydock */}
+            <Drydock state={state} update={update} />
 
             {/* chain status */}
             {state.active && (state.beat === "strike" || state.beat === "brace") && (
@@ -335,7 +342,9 @@ export default function BattleRoom() {
             <div className="mb-3 font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#7fe0ff]">Dungeon Master</div>
             <div className="mb-4 flex flex-wrap gap-2">
               {!state.active ? (
-                <Dm onClick={() => update(commence)}>⚔ Commence battle</Dm>
+                <Dm onClick={() => update(commence)} disabled={!loadout.valid}>
+                  ⚔ Commence battle{loadout.valid ? "" : " (fix build)"}
+                </Dm>
               ) : (
                 <>
                   <Dm onClick={() => update(advanceBeat)}>▶ Next beat</Dm>
@@ -409,9 +418,113 @@ function Hand({ children }: { children: React.ReactNode }) {
   return <span className="rounded border border-[#f0d080]/40 px-1 py-0.5 text-[#f0d080]">{children}</span>;
 }
 
-function Dm({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
+function Drydock({ state, update }: { state: BattleState; update: (t: (s: BattleState) => BattleState) => void }) {
+  const editable = !state.active;
+  const lo = computeLoadout(state.build, state.ship.tier);
+  const build = state.build;
+
+  const setFrame = (frame: FrameId) => update((s) => ({ ...s, build: { ...s.build, frame } }));
+  const toggleWeapon = (id: WeaponId) =>
+    update((s) => {
+      const has = s.build.weapons.includes(id);
+      return { ...s, build: { ...s.build, weapons: has ? s.build.weapons.filter((w) => w !== id) : [...s.build.weapons, id] } };
+    });
+  const toggleSystem = (id: SystemId) =>
+    update((s) => {
+      const has = s.build.systems.includes(id);
+      return { ...s, build: { ...s.build, systems: has ? s.build.systems.filter((w) => w !== id) : [...s.build.systems, id] } };
+    });
+
   return (
-    <button onClick={onClick} className="rounded border border-[#7fe0ff]/40 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-[0.18em] text-[#7fe0ff] transition-colors hover:bg-[#7fe0ff]/10">
+    <section className={`rounded-sm border p-3 ${lo.valid ? "border-[#7fff9f]/30" : "border-[#ff6b6b]/50"}`}>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <span className="font-display text-[11px] font-bold uppercase tracking-[0.24em] text-[#7fff9f]/90">Drydock</span>
+        <span className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-wider">
+          <Pip ok={lo.powerUsed <= lo.power}>Power {lo.powerUsed}/{lo.power}</Pip>
+          <Pip ok={build.weapons.length <= lo.weaponSlots}>Wpn {build.weapons.length}/{lo.weaponSlots}</Pip>
+          <Pip ok={build.systems.length <= lo.systemSlots}>Sys {build.systems.length}/{lo.systemSlots}</Pip>
+          <span className="text-white/40">Hull {lo.maxHull} · Shd {lo.maxShields}</span>
+        </span>
+      </div>
+
+      {!editable && <p className="mb-2 text-[10px] italic text-white/35">Battle underway — refit at the next downtime.</p>}
+
+      {/* frames */}
+      <div className="mb-2 flex flex-wrap gap-1">
+        {(Object.values(FRAMES)).map((f) => (
+          <button
+            key={f.id}
+            disabled={!editable}
+            onClick={() => setFrame(f.id)}
+            title={f.trait}
+            className={`rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors disabled:opacity-50 ${
+              build.frame === f.id ? "border-[#7fff9f] text-[#7fff9f]" : "border-white/15 text-white/45 hover:text-white/80"
+            }`}
+          >
+            {f.name}
+          </button>
+        ))}
+      </div>
+      <p className="mb-2 text-[10px] italic leading-snug text-white/40">{FRAMES[build.frame].trait}</p>
+
+      {/* weapons */}
+      <div className="mb-1 text-[9px] uppercase tracking-[0.18em] text-[#c9a84c]/60">Weapons</div>
+      <div className="mb-2 flex flex-wrap gap-1">
+        {Object.values(WEAPONS).map((w) => {
+          const on = build.weapons.includes(w.id);
+          return (
+            <button
+              key={w.id}
+              disabled={!editable}
+              onClick={() => toggleWeapon(w.id)}
+              title={w.note}
+              className={`rounded border px-2 py-0.5 text-[10px] tracking-wider transition-colors disabled:opacity-50 ${
+                on ? "border-[#ff6b6b]/70 bg-[#ff6b6b]/10 text-[#ff6b6b]" : "border-white/15 text-white/45 hover:text-white/80"
+              }`}
+            >
+              {w.name} <span className="text-[#f0d080]/80">{w.cost}⚡</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* systems */}
+      <div className="mb-1 text-[9px] uppercase tracking-[0.18em] text-[#c9a84c]/60">Systems</div>
+      <div className="flex flex-wrap gap-1">
+        {Object.values(SYSTEMS).map((sys) => {
+          const on = build.systems.includes(sys.id);
+          return (
+            <button
+              key={sys.id}
+              disabled={!editable}
+              onClick={() => toggleSystem(sys.id)}
+              title={`${sys.seat} — ${sys.note}`}
+              className={`rounded border px-2 py-0.5 text-[10px] tracking-wider transition-colors disabled:opacity-50 ${
+                on ? "border-[#7fe0ff]/70 bg-[#7fe0ff]/10 text-[#7fe0ff]" : "border-white/15 text-white/45 hover:text-white/80"
+              }`}
+            >
+              {sys.name} <span className="text-[#f0d080]/80">{sys.cost}⚡</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {!lo.valid && <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-[#ff6b6b]">Over budget: {lo.reasons.join(" · ")}</p>}
+    </section>
+  );
+}
+
+function Pip({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+  return <span className={`rounded border px-1 py-0.5 ${ok ? "border-white/20 text-white/55" : "border-[#ff6b6b]/60 text-[#ff6b6b]"}`}>{children}</span>;
+}
+
+function Dm({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="rounded border border-[#7fe0ff]/40 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-[0.18em] text-[#7fe0ff] transition-colors hover:bg-[#7fe0ff]/10 disabled:cursor-not-allowed disabled:opacity-30"
+    >
       {children}
     </button>
   );

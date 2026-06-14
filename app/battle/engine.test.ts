@@ -1,11 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { applyAbility, advanceBeat, commence, enemiesFire, unleashEpic } from "./engine";
+import { computeLoadout } from "./shipBuilding";
 import { defaultBattle, freshChain, makeEnemy, type BattleState, type RoleId } from "./types";
 
-/** A battle that is live, fully crewed, with one Line enemy in play. */
+/**
+ * A battle that is live, fully crewed, one Line enemy in play. Uses a vanilla
+ * build (no systems) so the base chain mechanics are tested without modifiers;
+ * the ship-building tests set their own builds.
+ */
 function setup(): { s: BattleState; enemyId: string } {
   let s = defaultBattle();
+  s = { ...s, build: { frame: "survey", weapons: ["pulse", "lance"], systems: [] } };
   (Object.keys(s.roles) as RoleId[]).forEach((r) => {
     s.roles[r].claimedBy = "Crew";
   });
@@ -113,6 +119,50 @@ describe("beats", () => {
     s = advanceBeat(s); // → spool, new round
     expect(s.beat).toBe("spool");
     expect(s.round).toBe(round + 1);
+  });
+});
+
+describe("ship building", () => {
+  it("computes budget, stats and ability mods per build", () => {
+    const survey = computeLoadout(
+      { frame: "survey", weapons: ["pulse", "lance"], systems: ["targeting", "reactor-tap"] },
+      1
+    );
+    expect(survey.valid).toBe(true);
+    expect(survey.powerUsed).toBe(6);
+    expect(survey.maxHull).toBe(16);
+    expect(survey.weaponTypes).toEqual(["balanced", "ap"]);
+    expect(survey.targetLockToHit).toBe(1); // Targeting Array
+    expect(survey.engineerLinkBonus).toBe(1); // Reactor Tap
+
+    expect(computeLoadout({ frame: "bulwark", weapons: [], systems: [] }, 1).maxHull).toBe(22);
+    expect(computeLoadout({ frame: "bulwark", weapons: [], systems: [] }, 1).armour).toBe(1);
+    expect(computeLoadout({ frame: "survey", weapons: [], systems: ["battle-choir"] }, 1).syncNeeded).toBe(4);
+    expect(computeLoadout({ frame: "lance", weapons: [], systems: [] }, 1).heavyPerLink).toBe(1);
+
+    // three Spinal Lances (9 power) blows the Tier-1 budget of 6
+    expect(computeLoadout({ frame: "survey", weapons: ["lance", "lance", "lance"], systems: [] }, 1).valid).toBe(false);
+  });
+
+  it("applies the build to the sheet on commence", () => {
+    let s = defaultBattle();
+    s = { ...s, build: { frame: "bulwark", weapons: ["pulse"], systems: [] } };
+    s = commence(s);
+    expect(s.ship.maxHull).toBe(22);
+    expect(s.ship.hull).toBe(22);
+  });
+
+  it("Bulwark armour shaves 1 off each incoming hit", () => {
+    rollAlways(11); // a modest, non-crit hit that clears defence 10
+    const damageTaken = (frame: "survey" | "bulwark") => {
+      let s = defaultBattle();
+      s = { ...s, build: { frame, weapons: ["pulse"], systems: [] } };
+      s = commence(s);
+      const max = s.ship.maxHull;
+      s = { ...s, enemies: [makeEnemy("X", 1, "line")], ship: { ...s.ship, shields: 0 } };
+      return max - enemiesFire(s).ship.hull;
+    };
+    expect(damageTaken("bulwark")).toBe(Math.max(0, damageTaken("survey") - 1));
   });
 });
 

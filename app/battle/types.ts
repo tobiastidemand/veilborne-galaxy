@@ -51,6 +51,36 @@ export const NO_HANDOFF: Handoff = {
   defense: 0,
 };
 
+/* --- ship building (see docs/ship-building.md) --------------------------- */
+export type FrameId = "survey" | "bulwark" | "aegis" | "wraith" | "lance";
+export type WeaponId = "pulse" | "beam" | "torpedo" | "lance" | "flak";
+export type SystemId =
+  | "command-suite"
+  | "battle-choir"
+  | "maneuver"
+  | "slip-drive"
+  | "reactor-tap"
+  | "dc-bay"
+  | "targeting"
+  | "spectre"
+  | "autoloader"
+  | "pd-net"
+  | "plating"
+  | "capacitor";
+
+export interface BuildState {
+  frame: FrameId;
+  weapons: WeaponId[];
+  systems: SystemId[];
+}
+
+/** The campaign's survey ship — a legal Tier-1 Survey Cutter build. */
+export const DEFAULT_BUILD: BuildState = {
+  frame: "survey",
+  weapons: ["pulse", "lance"],
+  systems: ["targeting", "reactor-tap"],
+};
+
 export interface ChainState {
   kind: ChainKind | null; // null = not yet opened this beat
   open: boolean; // the Commander (or stand-in) has opened
@@ -99,6 +129,7 @@ export interface BattleState {
     conditions: Condition[];
   };
   chain: ChainState;
+  build: BuildState;
   roles: Record<RoleId, { claimedBy: string | null }>;
   enemies: Enemy[];
   log: string[];
@@ -188,6 +219,7 @@ export function defaultBattle(): BattleState {
       conditions: [],
     },
     chain: freshChain(),
+    build: { frame: DEFAULT_BUILD.frame, weapons: [...DEFAULT_BUILD.weapons], systems: [...DEFAULT_BUILD.systems] },
     roles: {
       commander: { claimedBy: null },
       navigator: { claimedBy: null },
