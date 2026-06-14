@@ -54,16 +54,18 @@ A frame is the chassis. All frames share the Tier's Power/slot budget; they
 differ in how Hull/Shields are split and a single signature trait. (Numbers shown
 at **Tier 1**; they scale on the §11 curve.)
 
-| Frame | Hull | Shields | Signature trait |
-|---|---|---|---|
-| **Survey Cutter** *(balanced)* | 16 | 6 | +1 System slot. The versatile default. |
-| **Bulwark** *(brawler)* | 22 | 4 | Armour: the first 1 damage from each hit is ignored. |
-| **Aegis** *(shield-tank)* | 12 | 10 | Shields regen +1/round and may over-charge further. |
-| **Wraith** *(EW/skirmisher)* | 12 | 4 | Starts each battle Concealed (incoming −2 round 1); +1 Weapon slot but −2 Power. |
-| **Lance Runner** *(glass cannon)* | 14 | 4 | Heavy finishes deal **+1 per link** more; −2 Hull. |
+| Frame | Hull | Shields | Speed | Signature trait |
+|---|---|---|---|---|
+| **Survey Cutter** *(balanced)* | 16 | 6 | 3 | +1 System slot. The versatile default. |
+| **Bulwark** *(brawler)* | 22 | 4 | 2 | Armour: the first 1 damage from each hit is ignored. |
+| **Aegis** *(shield-tank)* | 12 | 10 | 2 | Shields regen +1/round and may over-charge further. |
+| **Wraith** *(EW/skirmisher)* | 12 | 4 | 5 | Starts each battle Concealed (incoming −2 turn 1); +1 Weapon slot but −2 Power. |
+| **Lance Runner** *(glass cannon)* | 14 | 4 | 4 | Heavy finishes deal **+1 per link** more; −2 Hull. |
 
 > A frame nudges the crew toward a play-style without locking it: a Wraith *can*
-> brawl, it's just better at ghosting.
+> brawl, it's just better at ghosting. **Speed** drives Initiative (`ship-combat.md`
+> §3) — a fast frame wins the right to Strike more often; a slow brawler expects to
+> Brace and grind.
 
 ---
 

@@ -1,23 +1,25 @@
-# Veilborn Ship Combat — Rules Draft v0.3 · "The Chain"
+# Veilborn Ship Combat — Rules Draft v0.4 · "Initiative & the Chain"
 
 > **Status:** design draft for playtesting. This is the *tabletop* subsystem —
 > runnable with dice, a ship sheet, and a few tokens. The companion app
 > implements these rules; it does not define them.
 >
-> v0.3 is a ground-up redesign. The old labels (Momentum, a separate Reaction
-> phase, per-officer power pools) are gone. The whole system is now built around
-> one idea: **the crew acts as a chain.** Deltas from the current app are at the
-> end.
+> v0.4 keeps the crew-as-a-chain core but reshapes the turn around **Initiative**:
+> each turn one ship **Strikes** and the other **Braces** — decided by **Speed** —
+> and the two chains are revealed against each other. The crew no longer runs both
+> chains a turn; winning (or stealing) the initiative is now a real decision, which
+> gives the Navigator a job beyond positioning. Deltas from the current app are at
+> the end.
 
 ---
 
 ## 1. Design pillars
 
-1. **One crew, one ship, one chain.** A round is not five separate turns. It's a
+1. **One crew, one ship, one chain.** A turn is not five separate moves. It's a
    *combo* the bridge builds together: one officer sets up the next, who sets up
    the next, until the last officer cashes it in. A lone good roll is weak; a
    well-ordered chain is devastating.
-2. **The order is the decision.** Every round the table asks: *who opens, who
+2. **The order is the decision.** Every turn the table asks: *who opens, who
    links, who finishes, and in what order?* Re-ordering the same five people
    produces a completely different outcome. That choice is the heart of play.
 3. **Every seat can be the hero.** Every role can be the Finisher, and every
@@ -36,10 +38,11 @@
 | Track | What it is | Notes |
 |---|---|---|
 | **Hull** | The ship's life. 0 = crippled (GM mercy table), not auto-destroyed. | Hard to restore mid-fight; the Engineer's Brace finish is the main way. |
-| **Shields** | Damage buffer. Regenerates a little each round; can be over-charged. | Weapon types interact differently (see §6). |
+| **Shields** | Damage buffer. Regenerates a little each turn; can be over-charged. | Weapon types interact differently (see §6). |
 | **Tier** | Ship/crew rank (1–5). The flat bonus added to rolls. | The campaign progression axis. |
-| **Sync** | A streak counter: successful chains in a row. At **5**, the Commander banks an **Epic Chain** (§4). | Resets when a Finisher fails. The crew's teamwork meter. |
-| **Heat** *(optional)* | Builds from overcharging / extending chains; vents each round. Too much = a system falters. | A push-your-luck knob; safe to ignore for a first game. |
+| **Speed** | How nimble the ship is. Drives **Initiative** — who Strikes and who Braces (§3). | Set by frame; the Navigator can boost it. |
+| **Sync** | A streak counter: successful chains in a row. At **3**, the Commander banks an **Epic Chain** (§4). | Resets when a Finisher fails. The crew's teamwork meter. |
+| **Heat** *(optional)* | Builds from overcharging; vents each turn. Too much = a system falters. | A push-your-luck knob; safe to ignore for a first game. |
 
 That's the whole sheet. There is **no Momentum pool and no Power pool** to track —
 the "fuel" for a big play is simply *how long a chain the crew built before the
@@ -50,23 +53,35 @@ Conditions are tracked per ship (see §6).
 
 ---
 
-## 3. The round
+## 3. The turn
 
-Four beats. The bridge talks freely throughout — that's the point.
+A turn is a **duel of two chains**: one ship Strikes, the other Braces. Four
+beats. The bridge talks freely throughout — that's the point.
 
-1. **Spool Up** — Shields regenerate a little; clear last round's round-scoped
-   effects; tick "start of round" durations.
-2. **Strike Chain** — the crew's offense. The Commander opens; the crew links a
-   combo; the last officer Finishes. (See §4.)
-3. **Brace Chain** — the enemy acts, and the crew links a response to weather
-   it: evade, screen, repair, or counter. The Commander opens this one too. (See
-   §4.)
-4. **Cool Down** — resolve durations (Burning, etc.), vent Heat, count down
-   conditions, check enemy morale/retreat.
+1. **Initiative** — both ships roll **`d20 + Speed`**. The winner takes the
+   initiative: **they Strike, the loser Braces** this turn. (Ties → the higher
+   Tier wins; still tied → re-roll.) Initiative is re-rolled every turn, so a slow
+   ship can still seize a moment — and the Navigator's chain can tip it.
+2. **Strike Chain** — the turn's *offensive* phase, built by whoever holds the
+   initiative (the crew if they won; otherwise the GM's ship). The Commander opens,
+   the crew links, the last officer Finishes. (See §4.)
+3. **Brace Chain** — the turn's *defensive* phase, built by the other side. Same
+   structure: Open → Links → Finish. (See §4.)
+4. **Rolls** — the Strike chain is revealed against the Brace chain. Each applies
+   the bonuses its links built, and rolls for whatever its Finisher produces — the
+   attack against the brace's defence. The GM resolves damage and conditions. Then
+   the turn ends and a new **Initiative** is rolled.
 
-> **Why this shape:** Strike = "we hit them, together." Brace = "we take the
-> return, together." Two short chains per round keeps everyone engaged the whole
-> time and keeps the pace fast — nobody sits idle waiting for "their turn."
+> **Why this shape:** you don't get to both hit *and* turtle every turn. If you
+> lose the initiative you are Bracing — so the crew has to play defence well, and
+> *winning* the initiative (Speed, the Navigator's tricks) becomes a prize worth
+> fighting for. One chain per side per turn keeps the whole bridge engaged and the
+> pace sharp.
+
+> **Both chains are built blind-ish, then revealed.** The fun tension: you're
+> ordering your chain knowing whether you're the hammer or the anvil this turn, but
+> not exactly how hard the other side committed. Tables that prefer it fully open
+> can just build in view of each other — it still works.
 
 ---
 
@@ -100,20 +115,12 @@ both work: the finish simply scales to the table.
 > Rule of thumb: a Finish gains **+1 step of effect (≈ +2 damage, or one extra
 > condition stack) per link** that preceded it. Tune in playtest.
 
-### Length is flexible — the Commander shapes it
+### Length is flexible — it's just your crew
 
 The chain has **as many links as you have officers** — typically 3–5, sometimes 2
-or 6. The **Commander (conductor)** can bend it, once per chain:
-
-- **Extend** — insert an extra link: one officer acts a *second* time (great for a
-  longer build, but see Heat / GM discretion).
-- **Cut** — skip the remaining links and go straight to a Finisher *now* for a
-  fast, smaller payoff (when speed beats size — e.g. finish a fleeing enemy, or
-  brace *right now* against a killing blow).
-
-> A short chain is fast and safe; a long chain is big but commits the whole crew
-> to one play (and leaves less flexibility in the *other* chain that round). That
-> tension — build big or stay nimble — is the recurring decision.
+or 6. The Finisher scales to that length, so any table size works without
+bookkeeping. Every officer present takes one position; the Commander always opens,
+everyone else links or finishes.
 
 ### Sync and the Epic Chain (the Commander's payoff)
 
@@ -121,16 +128,17 @@ The Commander never Finishes — their reward is getting the *whole crew* firing
 one. That's tracked by **Sync**:
 
 - A chain is **successful** when its **Finisher succeeds** (lands its attack or
-  achieves its effect). Each successful chain — Strike or Brace — ticks **Sync
-  +1.**
-- A **failed Finisher resets Sync to 0.** (A **Cut** chain neither builds nor
-  resets — going nimble is safe, it just doesn't count toward the streak.)
-- When **Sync hits 5**, the Commander **banks an Epic Chain.** Sync resets to 0,
+  achieves its effect). Each successful chain the crew runs — Strike *or* Brace —
+  ticks **Sync +1.**
+- A **failed Finisher resets Sync to 0.**
+- When **Sync hits 3**, the Commander **banks an Epic Chain.** Sync resets to 0,
   and the crew starts building the next streak.
 
-Because a round has two chains, the streak takes at least five successful chains
-to fill — so the **earliest an Epic Chain lands is round 3.** That cadence keeps
-it a genuine high point rather than a routine button.
+Because the crew now runs only **one chain per turn** (Strike or Brace, depending
+on the initiative), three successful chains take at least three turns — so the
+**earliest an Epic Chain lands is turn 3.** Rebalanced down to 3 specifically for
+the initiative turn; it keeps the payoff a genuine high point without making it
+rare.
 
 **The Epic Chain — "All as One":** the Commander spends a banked Epic Chain on
 *one* chain of their choice — an **Epic Strike** or an **Epic Brace.** For that
@@ -141,10 +149,10 @@ hand-off is treated as active. For one chain the bridge isn't a sequence; it's a
 single weapon — either an overwhelming all-guns alpha strike, or a wall the enemy
 breaks against. (Then the streak begins again from zero.)
 
-> This is the campaign's signature beat: five chains of disciplined teamwork earn
+> This is the campaign's signature beat: three chains of disciplined teamwork earn
 > one chain where the whole crew is the Finisher. It's the Commander's trophy and
-> everyone's spotlight at once — and the Commander still chooses *when* (which
-> round) and *which way* (strike or brace) to unleash it.
+> everyone's spotlight at once — and the Commander still chooses *when* and *which
+> way* (strike or brace) to unleash it.
 
 ---
 
@@ -169,6 +177,12 @@ Modifiers come almost entirely from **the links before you** — the angle the
 Navigator won, the lock the Sensor set, the suppression the Gunner laid down.
 That's the design: your roll is good because the crew made it good.
 
+**Opposed at reveal.** In the Rolls beat the **Strike** chain's attack is rolled
+against the **Brace** chain's defence: the brace's links and Finisher raise the
+defender's TN, add intercepts/evasion, or repair pre-emptively, and the strike's
+links and Finisher push the attack the other way. The GM reads the two stacks
+together and calls the result.
+
 ---
 
 ## 6. The crew — the ability matrix
@@ -183,17 +197,32 @@ Finish.
 
 ### Commander — *the conductor* (always Opens; never Finishes)
 
-- **Conductor (passive):** sets the chain order each beat and takes the first
-  position. Once per chain may **Extend** (an officer acts twice) or **Cut**
-  (jump to a Finisher now). Tracks **Sync**, and spends the banked **Epic Chain**
-  when the crew has earned it (§4).
+The Commander is the **first position in every chain** and the only **pure-support**
+seat — they never throw the punch, they *shape* it. Their authority is built in:
+after the crew debates the order, **the Commander has final say.** That gives the
+player real command-chair weight (and ends table arguments fast).
+
+- **Conductor (passive):** sets the chain order, takes the Open slot, tracks
+  **Sync**, and spends the banked **Epic Chain** (§4).
 - **Open · Strike — "Call the Shot":** name the target and the chain's goal. The
-  next officer gains **+Tier** to its action, and the whole chain treats the
-  target's relevant defense as **1 lower**.
-- **Open · Brace — "All Hands":** read the incoming threat. The next officer
-  gains **+Tier** to its defensive action; if the enemy's hit would disable a
-  station, the Commander may redirect it to a station of their choice (spread the
-  pain).
+  next officer gains **+Tier** to its action, and the chain treats the target's
+  relevant defence as **1 lower**.
+- **Open · Brace — "All Hands":** read the incoming threat. The next officer gains
+  **+Tier** to its defensive action.
+
+**Planned — the Commander's role-mirroring kit (on hold until ship-building is
+finished).** Rather than a fixed toolbox, the Commander *unlocks one ability that
+echoes each of the five seats* as the crew rises in Tier (additive — new tiers add
+options, they never replace old ones), reaching **five at Tier 5** (one per role).
+Each is a support play that sets up that seat's moment. Example seed:
+
+- *Tier 1 — Switch Weapon Systems (Gunner-facing):* the Commander orders a
+  swap of weapon/ammunition type — ideal right before a Gunner Finisher, letting
+  the crew pick the right damage type for the target.
+
+This whole tiered layer waits on the ship-building system, because hull upgrades
+will feed the final number-crunching and which abilities exist — see §6 note
+below.
 
 ### Navigator — *position*
 
@@ -251,8 +280,17 @@ Finish.
   punishes the enemy for swinging.
 
 > **Read the matrix as a toolkit, not a script.** Every role contributes to both
-> offense and defense; every role can finish either chain. What changes round to
-> round is *the order* — and that's the game.
+> offense and defense; every role can finish either chain. What changes turn to
+> turn is *the order* — and that's the game.
+
+> **Planned expansion (on hold until ship-building is finished).** The matrix
+> above is the *base*. The full design gives **every position at least two Link
+> options and two Finish options to choose from**, and adds **up to two more
+> abilities per Tier**, plus **scaling** on existing abilities as crew Tier rises.
+> This is deliberately deferred: ship upgrades will feed the final number-crunching
+> and combat abilities, so the tier ladder is designed *after* the ship-building
+> system is locked. Until then, the four combat seats use the single Link/Finish
+> shown, and the Commander uses Call the Shot / All Hands.
 
 ---
 
@@ -296,10 +334,11 @@ required.
   a morale/retreat trigger.
 - **Stat-by-Tier table** — baseline numbers per Tier so the GM can stat a foe in
   seconds.
-- **The enemy's turn = the Brace trigger.** In the Brace Chain the GM declares the
-  enemy's action(s) first; *then* the crew links its response. Give each foe a
-  simple priority ("focus the Marked ship," "close to Boarding," "vent on 2+
-  Breach").
+- **Enemy ships have Speed** and roll Initiative like the crew. When the GM's ship
+  **wins** the initiative it builds the **Strike** chain (keep it to an Open +
+  Finish for speed); when it **loses**, it builds the **Brace** chain. Give each
+  foe a simple priority ("focus the Marked ship," "close to Boarding," "always
+  juke when Bracing").
 - **Threat budget** — build an encounter to a budget for the crew's Tier and size
   (e.g. *Threat ≈ crew Tier × 4*; a swarm spends it on many cheap hulls, a duel
   on one elite). Note: a bigger crew builds *longer chains*, so scale enemy
@@ -309,81 +348,74 @@ required.
 
 ---
 
-## 10. Worked example (one full round)
+## 10. Worked example (two turns)
 
-*The Astral Cartographer (Tier 1, 4 officers: Commander, Sensor, Engineer,
-Gunner, Navigator) vs a Cobalt Reaver (frigate, TN 12) and a Lance Cutter
-(TN 14, missile boat).*
+*The Astral Cartographer (Tier 1, 5 officers) vs a Cobalt Reaver (frigate,
+TN 12, Speed 2).*
 
-### Strike Chain — the crew goes for the Cutter
+### Turn 1 — Initiative
 
-The Commander wants the missile boat dead. They build a long chain to a Gunner
-finish:
+Both roll `d20 + Speed`. The Cartographer (Speed 3) rolls 14 → **17**; the Reaver
+rolls 9 → **11**. The crew wins the initiative: **the crew Strikes, the Reaver
+Braces.**
 
-1. **Open · Commander "Call the Shot"** → names the Lance Cutter; treats its
-   defense as 1 lower; hands the next link +Tier.
-2. **Link · Sensor "Target Lock"** → Marks the Cutter; *hands the Gunner: ignore
-   its shields.* (But the Gunner isn't next — the Navigator is. The crew ordered
-   it so the Navigator's hand-off, not the Sensor's, lands on the Gunner. They
-   re-order on the fly: Sensor's lock is a standing **Marked** condition, so it
-   still helps; the immediate hand-off goes to whoever's next.)
-3. **Link · Navigator "Attack Vector"** → wins the firing line; *hands the
-   Gunner +2 to hit.*
-4. **Finish · Gunner "Killing Blow"** with a Lance (AP) → Chain Length 3, so
-   **+6 damage**; Marked + bypass-shields + the angle. Rolls `d20(14)+Tier(1)+
-   Marked(2)+angle(2) = 19` vs TN 14 → hit, +5 over = a degree → **Breach** on top
-   of the heavy AP damage. The Cutter is gutted.
+**Strike Chain (crew):** the Commander builds toward a Gunner finish.
+1. **Open · Commander "Call the Shot"** → names the Reaver; chain +1 to hit, its
+   defence treated as 1 lower.
+2. **Link · Sensor "Target Lock"** → Marks it; chain ignores its shields, TN −2.
+3. **Link · Navigator "Attack Vector"** → +2 to hit.
+4. **Finish · Gunner "Killing Blow"** (Lance/AP) → Chain Length 3 → **+6 damage**.
 
-> Note how nearly every modifier on that final roll came from a teammate. Solo,
-> the Gunner rolls `d20+1`. Chained, they roll `d20+5` *and* deal +6.
+**Brace Chain (Reaver):** the GM keeps it simple — the frigate juke (+2 defence).
 
-### Brace Chain — the Reaver and the wounded Cutter return fire
+**Rolls:** the Gunner's attack `d20(13)+Tier(1)+toHit(3)+Marked(2)=19` vs the
+Reaver's braced TN `12 − 2 (lock) − 1 (call) + 2 (juke) = 11` → hit by 8 (two
+degrees) → **Breach** plus the heavy AP damage bypassing shields. The Reaver is
+gutted. **Sync 1.**
 
-The GM declares: the Reaver fires cannons; the Cutter (Breached, desperate)
-launches its last missile. The crew braces — your defensive example, run as a
-chain to an Engineer recovery finish:
+### Turn 2 — Initiative
 
-1. **Open · Commander "All Hands"** → reads the volley; hands the next +Tier
-   defense.
-2. **Link · Gunner "Point Defense / Suppressive Fire"** → shoots down the
-   Cutter's missile, *and* suppresses the Reaver so *the next officer can move
-   safely.*
-3. **Link · Navigator "Evasive"** → repositions to a safe band; *the next officer
-   is concealed-adjacent and the enemy is at −2.*
-4. **Link · Sensor "Blur"** → hacks the Reaver's optics; *the next officer works
-   unseen (incoming −2).*
-5. **Finish · Engineer "Damage Control"** → Chain Length 4, so restores
-   **Shields/Hull +4**, safely, because the whole crew screened the work.
+Re-roll. The wounded Reaver burns hard (Speed 2) and rolls **18**; the crew rolls
+**12**. The Reaver takes the initiative: **the Reaver Strikes, the crew Braces.**
 
-The Reaver's cannon shot, fired into the blur at −2 and a repositioned target,
-glances off the freshly restored shields. The bridge weathered it **together.**
+**Strike Chain (Reaver):** the GM swings its cannons (a Tier-1 attack).
 
-### Cool Down
+**Brace Chain (crew):** the Commander builds a defensive chain.
+1. **Open · Commander "All Hands"** → +1 ship defence.
+2. **Link · Gunner "Point Defense"** → an intercept banked.
+3. **Link · Sensor "Blur"** → incoming −2.
+4. **Finish · Engineer "Damage Control"** → Chain Length 3 → restores **Shields
+   +6**.
 
-Breach persists on the Cutter; no Burning. The Reaver checks morale — with its
-escort gutted, it begins to disengage.
+**Rolls:** the Reaver's cannon `d20+Tier` is rolled against the braced ship —
+defence raised, incoming −2 from the Blur; what little gets through is soaked by
+the freshly restored shields. **Sync 2.** One more clean chain and the Commander
+banks an **Epic Chain.**
+
+> The whole fight now pivots on the initiative: win it and you press the attack,
+> lose it and you'd better have braced well — which is exactly the defensive
+> pressure the new turn is meant to create.
 
 ---
 
-## 11. Numbers (v0.3 playtest defaults)
+## 11. Numbers (v0.4 playtest defaults)
 
-These are the concrete values the companion app uses, so paper and screen agree.
-All are first-pass and meant to be tuned in play.
+These are the concrete values the companion app targets, so paper and screen
+agree. All are first-pass and meant to be tuned in play.
 
 ### Core dials
 
 | Dial | Value | Note |
 |---|---|---|
-| **Attack roll** | `d20 + Tier + hand-offs vs TN` | Tier is the flat rank bonus. |
+| **Initiative** | `d20 + Speed` per ship; high wins | winner Strikes, loser Braces; ties → higher Tier. |
+| **Attack roll** | `d20 + Tier + hand-offs vs TN` | TN is raised by the Brace chain at reveal. |
 | **Degree of success** | every **4** over the TN | each degree = a bonus effect (+1 damage or a condition). |
 | **Critical** | natural **20** (Killbox: **19–20**) | doubles damage, applies a condition. |
 | **Heavy finish scaling** | **+2 damage per link** | Killing Blow, Reactor Lance. |
 | **Light finish scaling** | **+1 per link** | Strafing Run, Counter-Volley, Killbox, Damage Control, Ghost. |
-| **Chain Length cap** | **4** | scaling stops counting past 4 links — keeps long chains from spiking. |
-| **Action economy** | once per chain → **twice per round** | each officer may act in both the Strike and the Brace chain. |
-| **Extend** | **once per battle** (free; +1 Heat if using Heat) | the conductor's "act twice." |
-| **Cut** | Finisher gets **+2** to its roll | rewards going nimble. |
-| **Sync → Epic** | **5** successful chains | earliest payoff = round 3. |
+| **Chain Length cap** | **4** | scaling stops counting past 4 links. |
+| **Action economy** | **one chain per turn** | the crew Strikes *or* Braces, set by the initiative. |
+| **Sync → Epic** | **3** successful chains | earliest payoff = turn 3. |
 | **Epic Chain** | every officer Finishes once, scaled at **Chain Length 4** | the cap keeps an Epic Strike from one-shotting a capital ship. |
 | **Commanderless** | any one officer takes the Open | generic Open = +Tier hand-off; they hold the captaincy that chain. |
 
@@ -398,7 +430,7 @@ All are first-pass and meant to be tuned in play.
 
 ### Player ship by Tier
 
-| Tier | +bonus | Hull | Shields | Shield regen / round |
+| Tier | +bonus | Hull | Shields | Shield regen / turn |
 |---|---|---|---|---|
 | 1 | +1 | 16 | 6 | 2 |
 | 2 | +2 | 22 | 8 | 2 |
@@ -406,7 +438,9 @@ All are first-pass and meant to be tuned in play.
 | 4 | +4 | 36 | 12 | 3 |
 | 5 | +5 | 44 | 14 | 4 |
 
-(Ship-building redistributes these around the same totals — see `ship-building.md`.)
+**Speed** defaults to **3**; it's set by the frame (a Wraith is faster, a Bulwark
+slower) and the Navigator can boost it. (Ship-building redistributes Hull/Shields
+around the same totals and sets Speed — see `ship-building.md`.)
 
 ### Enemy stat-by-Tier (Line size = ×1)
 
@@ -418,8 +452,13 @@ All are first-pass and meant to be tuned in play.
 | 4 | 32 | 8 | 15 | 6 |
 | 5 | 40 | 10 | 16 | 7 |
 
-**Size modifiers:** *Skirmisher* — ½ Hull, −2 TN, breaks early. *Line* — as above.
-*Elite* — ×2 Hull, +2 TN, +1 Attack, a special move, holds morale.
+Enemy **Speed** defaults to its Tier + 1 (a Skirmisher is +2 faster, an Elite
+−1 slower) — so light foes tend to win the initiative and press, heavies tend to
+brace and grind.
+
+**Size modifiers:** *Skirmisher* — ½ Hull, −2 TN, +2 Speed, breaks early. *Line* —
+as above. *Elite* — ×2 Hull, +2 TN, +1 Attack, −1 Speed, a special move, holds
+morale.
 
 ### Threat budget
 
@@ -436,30 +475,37 @@ tougher hulls, not just bigger numbers.
 
 ### Still genuinely open (decide in play)
 
-- Does the Chain Length cap of 4 feel right at a 6-player table, or should it rise
-  to 5?
-- Should **Cut** also bank Sync (currently it's neutral — neither builds nor
-  breaks the streak)?
-- Is "once per battle" the right rate for **Extend**, or once per *Epic* cycle?
+- **Initiative swinginess** — is `d20 + Speed` too random (a slow ship wins too
+  often), or is that volatility the point? Alternative: best-of or Speed as a flat
+  tiebreaker with a smaller die.
+- **Losing the initiative every turn** — does a much faster enemy that keeps
+  Striking feel oppressive? May need a catch-up rule (e.g. the Braced side banks a
+  small bonus toward next turn's initiative).
+- **Chain Length cap of 4** — right at a 6-player table, or raise to 5?
+- **Navigator initiative boosts** — how much should a Navigator chain be able to
+  tip next turn's roll? (Part of the on-hold tiered-ability work.)
 
 ---
 
-## 12. Deltas from the current app prototype
+## 12. Deltas — v0.3 → v0.4, and the app
 
-The app (`/battle`) implements the older v1 system. v0.3 changes:
+The app (`/battle`) currently implements **v0.3** (both chains every round,
+Sync 5, no Speed/Initiative). v0.4 changes:
 
-- **Round shape** → from Start/Action/Reaction/End to **Spool Up / Strike Chain /
-  Brace Chain / Cool Down**, both chains crew-ordered.
-- **Momentum & Power pools** → *removed.* The "fuel" is Chain Length. The sheet
-  shrinks to Hull / Shields / Tier (+ optional Heat).
-- **Turn order** → from "each officer acts once in any order" to an explicit,
-  Commander-led **chain with hand-offs and a scaling Finisher.**
-- **Reactions** → no longer a separate paid resource; the **Brace Chain** is the
-  defensive counterpart of the Strike Chain, with its own Link/Finish abilities.
-- **Role abilities** → re-authored as the Link/Finish matrix in §6.
-- **Variable crew size** → first-class: chain length and Finisher scaling absorb
-  3–6 player tables.
-- **Ship-building** → still a future layer (separate doc) feeding weapons/systems
-  and a power budget into these rules.
+- **Turn, not round** → new **Initiative / Strike / Brace / Rolls** turn. Both
+  ships roll `d20 + Speed`; the winner Strikes and the loser Braces. The crew runs
+  **one** chain per turn, not both.
+- **Speed stat added** to the sheet; drives Initiative.
+- **Extend / Cut removed** (the Commander no longer bends chain length).
+- **Sync → Epic lowered to 3** (rebalanced for one-chain-per-turn).
+- **Resolution is opposed** — Strike chain vs Brace chain, revealed and rolled
+  together in the Rolls beat.
+- **Commander reframed** — first position, pure-support, final say on the order;
+  gains a tiered, role-mirroring kit *(on hold — see §6)*.
+- **Role matrix expansion** *(on hold)* — ≥2 Link and ≥2 Finish options per seat,
+  +2 abilities per Tier, and ability scaling, all designed *after* ship-building is
+  locked (hull upgrades feed the numbers).
 
-Once this draft plays well on paper, the app gets rebuilt to match.
+**App status:** the engine still runs v0.3. The v0.4 initiative turn + the tiered
+ability ladder are intentionally **not yet built in the app** — they wait on the
+ship-building system being finished, so the number-crunching is done once.
