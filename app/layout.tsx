@@ -1,23 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Cinzel, Cinzel_Decorative, Crimson_Pro } from "next/font/google";
+import { Space_Grotesk, Inter, Space_Mono } from "next/font/google";
 import "./globals.css";
 
-const cinzel = Cinzel({
-  variable: "--font-cinzel",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
-  weight: ["400", "700", "900"],
+  weight: ["400", "500", "700"],
 });
 
-const cinzelDecorative = Cinzel_Decorative({
-  variable: "--font-cinzel-decorative",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["700", "900"],
 });
 
-const crimsonPro = Crimson_Pro({
-  variable: "--font-crimson",
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
   subsets: ["latin"],
-  style: ["normal", "italic"],
+  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
@@ -29,7 +28,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#03020a",
+  themeColor: "#05060a",
   colorScheme: "dark",
 };
 
@@ -41,7 +40,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${cinzel.variable} ${cinzelDecorative.variable} ${crimsonPro.variable}`}
+      className={`${spaceGrotesk.variable} ${inter.variable} ${spaceMono.variable}`}
     >
       <body>{children}</body>
     </html>

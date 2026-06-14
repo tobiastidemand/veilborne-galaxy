@@ -514,8 +514,11 @@ function OrbitingBody({
 
       {(hovered || selected) && (
         <Html center position={[0, reach + 0.6, 0]} zIndexRange={[20, 0]}>
-          <div className="pointer-events-none select-none whitespace-nowrap rounded border border-[#c9a84c]/40 bg-[#07051a]/90 px-2 py-1 backdrop-blur-sm">
-            <span className="font-display text-[11px] font-bold tracking-[0.18em] text-[#f0d080]">
+          <div
+            className="pointer-events-none select-none whitespace-nowrap rounded border border-accent/40 bg-bg/85 px-2 py-1 backdrop-blur-sm"
+            style={{ boxShadow: "0 0 10px var(--glow)" }}
+          >
+            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] text-accent">
               {cfg.body.name.toUpperCase()}
             </span>
           </div>

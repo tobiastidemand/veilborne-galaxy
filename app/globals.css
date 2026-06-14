@@ -1,38 +1,58 @@
 @import "tailwindcss";
 
-@theme inline {
-  --font-display: var(--font-cinzel);
-  --font-title: var(--font-cinzel-decorative);
-  --font-body: var(--font-crimson);
+/* Not `inline`: utilities reference the var(--color-*) tokens, so overriding
+   them at runtime (the HUD palette switcher) re-themes the whole UI. */
+@theme {
+  --font-display: var(--font-space-grotesk);
+  --font-body: var(--font-inter);
+  --font-mono: var(--font-space-mono);
 
-  --color-gold: #c9a84c;
-  --color-gold-bright: #f0d080;
-  --color-gold-dim: #8a7438;
-  --color-vellum: #160f2c;
-  --color-ink: #07051a;
+  /* near-black space surface */
+  --color-bg: #05060a;
+  --color-panel: #0c0e14;
+  --color-panel-2: #11141c;
+
+  /* type */
+  --color-fg: #e6e9f0;
+  --color-muted: #8a92a6;
+  --color-faint: #5b6173;
+
+  /* electric-blue accent */
+  --color-accent: #4da3ff;
+  --color-accent-bright: #8cc6ff;
+  --color-accent-dim: #2e6fb0;
+
+  /* cyan — complementary HUD accent */
+  --color-cyan: #4fe3d6;
+  --color-cyan-dim: #2f9d95;
 }
 
 :root {
-  --gold: #c9a84c;
-  --gold-bright: #f0d080;
-  --gold-dim: #8a7438;
+  /* aliases that track the themeable tokens, plus the soft glow colour the
+     palette switcher overrides alongside them */
+  --accent: var(--color-accent);
+  --accent-bright: var(--color-accent-bright);
+  --accent-dim: var(--color-accent-dim);
+  --cyan: var(--color-cyan);
+  --glow: rgba(77, 163, 255, 0.5);
+  --hairline: rgba(255, 255, 255, 0.09);
 }
 
 html,
 body {
   height: 100%;
-  background: #03020a;
-  color: #e9e2d0;
+  background: var(--color-bg);
+  color: var(--color-fg);
   overflow: hidden;
 }
 
 body {
-  font-family: var(--font-crimson), Georgia, serif;
+  font-family: var(--font-inter), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* honour reduced-motion for all CSS transitions/animations (legend, hovers) */
+/* honour reduced-motion for all CSS transitions/animations */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -44,105 +64,123 @@ body {
   }
 }
 
-/* --- atmospheric overlays --------------------------------------- */
+/* --- chrome surfaces -------------------------------------------- */
 
-/* subtle CRT scanlines over the whole chart */
-.scanlines {
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.5) 0px,
-    rgba(255, 255, 255, 0.5) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-  opacity: 0.04;
-  mix-blend-mode: overlay;
+/* just the frosted blur — background + border are set per element (via
+   Tailwind utilities) so they stay overridable and consistent with the nav */
+.panel {
+  backdrop-filter: blur(14px);
 }
 
-/* --- the illuminated-tome surface ------------------------------- */
-
-.tome-panel {
-  background:
-    linear-gradient(
-      160deg,
-      rgba(30, 22, 54, 0.97),
-      rgba(14, 10, 34, 0.98)
-    );
-  box-shadow:
-    inset 0 0 0 1px rgba(201, 168, 76, 0.16),
-    inset 0 0 36px rgba(0, 0, 0, 0.55),
-    0 10px 44px rgba(0, 0, 0, 0.5);
-}
-
-/* a fine inset frame line — the "second rule" of a manuscript border */
-.tome-frame::after {
+/* faint blueprint grid — applied only to chrome, never over the 3D scene.
+   Drawn on a ::before overlay so the radial fade masks ONLY the grid lines,
+   leaving the panel's background fully solid for readability. Consumers are
+   already positioned (fixed), so the overlay anchors correctly; their real
+   children must sit at z-index ≥ 1 to stay above the grid. */
+.panel-grid::before {
   content: "";
   position: absolute;
-  inset: 6px;
-  border: 1px solid rgba(201, 168, 76, 0.22);
+  inset: 0;
+  z-index: 0;
   pointer-events: none;
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--accent) 12%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accent) 12%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(
+    ellipse 66% 58% at 50% 38%,
+    #000 12%,
+    transparent 88%
+  );
+  mask-image: radial-gradient(
+    ellipse 66% 58% at 50% 38%,
+    #000 12%,
+    transparent 88%
+  );
 }
 
-/* ornamental section divider with a central glyph */
-.tome-divider {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: rgba(201, 168, 76, 0.7);
-  font-size: 0.7rem;
-  line-height: 1;
+/* chamfered (cut) top-left + bottom-left corners to match the HUD brackets */
+.panel-clip {
+  clip-path: polygon(
+    16px 0,
+    100% 0,
+    100% 100%,
+    16px 100%,
+    0 calc(100% - 16px),
+    0 16px
+  );
 }
-.tome-divider::before,
-.tome-divider::after {
-  content: "";
-  height: 1px;
-  flex: 1;
+
+/* gentle breathing glow for holographic HUD strokes */
+@keyframes hud-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+.hud-pulse {
+  animation: hud-pulse 3.6s ease-in-out infinite;
+}
+
+/* small monospaced index chip — [01], [02] … */
+.index-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  padding: 3px 5px;
+  border-radius: 3px;
+}
+
+/* thin connector line that ties an index marker to its content */
+.index-rule {
+  width: 1px;
   background: linear-gradient(
-    to right,
-    transparent,
-    rgba(201, 168, 76, 0.4),
+    to bottom,
+    color-mix(in srgb, var(--accent) 50%, transparent),
     transparent
   );
 }
 
-/* illuminated initial for lore passages */
-.dropcap::first-letter {
-  font-family: var(--font-cinzel-decorative), serif;
-  font-weight: 900;
-  font-size: 3.1em;
-  float: left;
-  line-height: 0.78;
-  margin: 0.04em 0.1em 0 0;
-  color: var(--gold-bright);
-  text-shadow: 0 0 14px rgba(240, 208, 128, 0.4);
+/* hairline horizontal divider */
+.hairline {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 255, 255, 0.12),
+    transparent
+  );
 }
 
-/* ledger row: label …… value, with a dotted leader between them */
-.ledger-row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-.ledger-row > .leader {
-  flex: 1;
-  align-self: stretch;
-  border-bottom: 1px dotted rgba(201, 168, 76, 0.28);
-  transform: translateY(-0.28rem);
-}
-
-/* slim gold scrollbar for the side panels */
-.tome-scroll {
+/* slim accent scrollbar for side panels */
+.scroll-thin {
   scrollbar-width: thin;
-  scrollbar-color: rgba(201, 168, 76, 0.35) transparent;
+  scrollbar-color: color-mix(in srgb, var(--accent) 35%, transparent) transparent;
 }
-.tome-scroll::-webkit-scrollbar {
+.scroll-thin::-webkit-scrollbar {
   width: 8px;
 }
-.tome-scroll::-webkit-scrollbar-thumb {
-  background: rgba(201, 168, 76, 0.3);
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
   border-radius: 4px;
 }
-.tome-scroll::-webkit-scrollbar-track {
+.scroll-thin::-webkit-scrollbar-track {
   background: transparent;
 }
-

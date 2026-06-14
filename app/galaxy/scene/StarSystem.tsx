@@ -341,8 +341,11 @@ export function StarSystem({
           position={[0, system.size * 1.4 + 2.2, 0]}
           zIndexRange={[20, 0]}
         >
-          <div className="pointer-events-none select-none whitespace-nowrap rounded border border-[#c9a84c]/40 bg-[#07051a]/90 px-3 py-1.5 backdrop-blur-sm">
-            <span className="font-display text-sm font-bold tracking-[0.2em] text-[#f0d080]">
+          <div
+            className="pointer-events-none select-none whitespace-nowrap rounded border border-accent/40 bg-bg/85 px-3 py-1.5 backdrop-blur-sm"
+            style={{ boxShadow: "0 0 12px var(--glow)" }}
+          >
+            <span className="font-mono text-[12px] font-medium uppercase tracking-[0.22em] text-accent">
               {system.name.toUpperCase()}
             </span>
           </div>
@@ -377,8 +380,8 @@ export function StarSystem({
             position={[0, system.size * 1.4 + 1.5, 0]}
             zIndexRange={[25, 0]}
           >
-            <div className="pointer-events-none select-none whitespace-nowrap rounded-full border border-[#7fe0ff]/60 bg-[#07051a]/90 px-2.5 py-0.5 backdrop-blur-sm">
-              <span className="font-display text-[10px] font-bold tracking-[0.2em] text-[#7fe0ff]">
+            <div className="pointer-events-none select-none whitespace-nowrap rounded-full border border-cyan/60 bg-bg/85 px-2.5 py-0.5 backdrop-blur-sm">
+              <span className="font-mono text-[10px] font-medium tracking-[0.2em] text-cyan">
                 ◆ THE PARTY
               </span>
             </div>
@@ -393,8 +396,8 @@ export function StarSystem({
           position={[0, -(system.size * 1.4 + 1.1), 0]}
           zIndexRange={[15, 0]}
         >
-          <div className="pointer-events-none select-none whitespace-nowrap rounded border border-[#ff9f40]/40 bg-[#07051a]/85 px-2 py-0.5">
-            <span className="font-display text-[9px] font-bold tracking-[0.2em] text-[#ff9f40]">
+          <div className="pointer-events-none select-none whitespace-nowrap rounded border border-[#ffab5c]/40 bg-bg/85 px-2 py-0.5">
+            <span className="font-mono text-[9px] font-medium tracking-[0.2em] text-[#ffab5c]">
               ⬚ HIDDEN
             </span>
           </div>

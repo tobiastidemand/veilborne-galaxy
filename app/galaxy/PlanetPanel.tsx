@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 
 import type { CelestialBody } from "./data";
+import { PanelHudFrame } from "./Hud";
 
 type Shown = { body: CelestialBody; systemName: string };
 
@@ -16,7 +17,7 @@ export default function PlanetPanel({
   systemName,
   open,
   reducedMotion = false,
-  accent = "#c9a84c",
+  accent = "#4da3ff",
   onBack,
 }: {
   body: CelestialBody | null;
@@ -86,32 +87,32 @@ export default function PlanetPanel({
       role="dialog"
       aria-label={shown ? `${shown.body.name} survey` : "Body survey"}
       aria-hidden={!open}
-      style={{ borderLeftColor: `${accent}aa` }}
-      className="tome-panel tome-scroll fixed right-0 top-0 z-[45] h-full w-[min(360px,92vw)] overflow-y-auto border-l-2 backdrop-blur-md"
+      className="panel panel-grid panel-clip fixed right-0 top-[86px] z-[45] h-[calc(100vh-98px)] w-[min(360px,92vw)] overflow-hidden bg-gradient-to-b from-bg/90 to-bg/30"
     >
+      <PanelHudFrame />
       {shown && (
         <div
           ref={contentRef}
-          className="flex min-h-full flex-col gap-4 px-6 pb-10 pt-6"
+          className="scroll-thin relative z-[1] flex h-full flex-col gap-4 overflow-y-auto px-6 pb-10 pt-6"
         >
           <button
             onClick={onBack}
-            className="self-start font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#c9a84c] transition-colors hover:text-[#f0d080]"
+            className="self-start font-mono text-[11px] uppercase tracking-[0.2em] text-accent transition-colors hover:text-accent-bright"
           >
             ‹ Back to {shown.systemName}
           </button>
 
           <header>
-            <div className="text-[10px] uppercase tracking-[0.32em] text-[#c9a84c]/45">
+            <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-faint">
               {shown.systemName} · Celestial Body
             </div>
             <h2
-              className="mt-1.5 font-title text-[2rem] font-black leading-[1.05] text-[#f0d080]"
-              style={{ textShadow: `0 0 18px ${accent}66` }}
+              className="mt-1.5 font-display text-[1.9rem] font-bold leading-[1.05] text-fg"
+              style={{ textShadow: `0 0 22px ${accent}55` }}
             >
               {shown.body.name}
               {shown.body.highlight && (
-                <span className="ml-2 text-[#f0d080]">★</span>
+                <span className="ml-2 text-accent">★</span>
               )}
             </h2>
           </header>
@@ -124,30 +125,26 @@ export default function PlanetPanel({
                 boxShadow: `0 0 8px ${shown.body.color}`,
               }}
             />
-            <span className="text-[11px] uppercase tracking-[0.2em] text-[#c9a84c]/55">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-faint">
               Surveyed Body
             </span>
           </div>
 
-          <div className="tome-divider">
-            <span>✦</span>
-          </div>
+          <div className="hairline" />
 
           <section>
-            <h3 className="mb-2 flex items-center gap-2 font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#c9a84c]">
-              <span className="text-[#c9a84c]/50">❖</span>
+            <h3 className="mb-2 flex items-center gap-2 font-display text-[12px] font-medium tracking-[0.02em] text-fg">
+              <span className="index-marker">01</span>
               Survey Notes
             </h3>
-            <p className="dropcap text-sm italic leading-relaxed text-[#e9e2d0]/80">
+            <p className="text-sm leading-relaxed text-muted">
               {shown.body.description}
             </p>
           </section>
 
           <section className="mt-auto pt-4">
-            <div className="tome-divider mb-3">
-              <span>✦</span>
-            </div>
-            <p className="text-[11px] italic leading-relaxed tracking-wide text-[#c9a84c]/40">
+            <div className="hairline mb-3" />
+            <p className="font-mono text-[11px] leading-relaxed tracking-wide text-faint/70">
               Survey data cross-referenced against {shown.systemName} system
               records. Anomalous readings flagged for the Arcane Survey.
             </p>

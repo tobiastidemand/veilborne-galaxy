@@ -4,46 +4,47 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 
 import {
-  CHAIN_MARKER,
   THREAT_STYLE,
   getSystemBodies,
   type StarSystemData,
 } from "./data";
+import { PanelHudFrame } from "./Hud";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="ledger-row py-1.5">
-      <span className="text-[11px] uppercase tracking-[0.18em] text-[#c9a84c]/65">
+    <div className="flex items-baseline justify-between gap-3 py-1.5">
+      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
         {label}
       </span>
-      <span className="leader" />
-      <span className="text-right text-sm text-[#e9e2d0]/90">{value}</span>
+      <span className="text-right text-sm text-fg/90">{value}</span>
     </div>
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionTitle({
+  index,
+  children,
+}: {
+  index: string;
+  children: React.ReactNode;
+}) {
   return (
-    <h3 className="mb-2 flex items-center gap-2 font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#c9a84c]">
-      <span className="text-[#c9a84c]/50">❖</span>
+    <h3 className="mb-2 flex items-center gap-2 font-display text-[12px] font-medium tracking-[0.02em] text-fg">
+      <span className="index-marker">{index}</span>
       {children}
     </h3>
   );
 }
 
 function Divider() {
-  return (
-    <div className="tome-divider">
-      <span>✦</span>
-    </div>
-  );
+  return <div className="hairline" />;
 }
 
 export default function SystemPanel({
   system,
   open,
   reducedMotion = false,
-  accent = "#c9a84c",
+  accent = "#4da3ff",
   dmMode = false,
   discovered = true,
   isParty = false,
@@ -83,9 +84,6 @@ export default function SystemPanel({
     });
   }, [open, shown, reducedMotion]);
 
-  const chainStyle = shown
-    ? CHAIN_MARKER[shown.chain.level] ?? { color: "#9a9a9a", opacity: 0.7 }
-    : null;
   const threat = shown ? THREAT_STYLE[shown.threat] : null;
   const uncharted = shown
     ? getSystemBodies(shown).filter((b) => b.synthetic).length
@@ -97,34 +95,34 @@ export default function SystemPanel({
       role="dialog"
       aria-label={shown ? `${shown.name} system survey` : "System survey"}
       aria-hidden={!open}
-      style={{ borderLeftColor: `${accent}aa` }}
-      className="tome-panel tome-scroll fixed right-0 top-0 z-[45] h-full w-[min(360px,92vw)] overflow-y-auto border-l-2 backdrop-blur-md"
+      className="panel panel-grid panel-clip fixed right-0 top-[86px] z-[45] h-[calc(100vh-98px)] w-[min(360px,92vw)] overflow-hidden bg-gradient-to-b from-bg/90 to-bg/30"
     >
+      <PanelHudFrame />
       {shown && (
-        <div className="flex min-h-full flex-col gap-4 px-6 pb-10 pt-6">
+        <div className="scroll-thin relative z-[1] flex h-full flex-col gap-4 overflow-y-auto px-6 pb-10 pt-6">
           <button
             onClick={onBack}
-            className="self-start font-display text-[11px] font-bold uppercase tracking-[0.28em] text-[#c9a84c] transition-colors hover:text-[#f0d080]"
+            className="flex cursor-pointer items-center gap-1 self-start rounded border border-accent/30 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-accent transition-all hover:border-accent hover:text-accent-bright hover:shadow-[0_0_12px_var(--glow)]"
           >
-            ‹ Back to Galaxy
+            ✕ Close
           </button>
 
           {dmMode && (
-            <div className="flex flex-col gap-2 rounded-sm border border-[#7fe0ff]/35 bg-[#7fe0ff]/5 p-2.5">
-              <div className="font-display text-[9px] font-bold uppercase tracking-[0.28em] text-[#7fe0ff]/80">
+            <div className="flex flex-col gap-2 rounded-md border border-accent/35 bg-accent/5 p-2.5">
+              <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-accent/80">
                 Dungeon Master
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={onSetParty}
                   disabled={isParty}
-                  className="rounded border border-[#7fe0ff]/40 px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-[0.18em] text-[#7fe0ff] transition-colors hover:bg-[#7fe0ff]/10 disabled:cursor-default disabled:opacity-40"
+                  className="rounded border border-accent/40 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-accent transition-colors hover:bg-accent/10 disabled:cursor-default disabled:opacity-40"
                 >
                   {isParty ? "◆ Party is here" : "Set party here"}
                 </button>
                 <button
                   onClick={onToggleDiscovered}
-                  className="rounded border border-[#c9a84c]/40 px-2.5 py-1 font-display text-[10px] font-bold uppercase tracking-[0.18em] text-[#c9a84c] transition-colors hover:bg-[#c9a84c]/10"
+                  className="rounded border border-white/20 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-muted transition-colors hover:text-fg"
                 >
                   {discovered ? "Hide from players" : "Reveal to players"}
                 </button>
@@ -133,16 +131,16 @@ export default function SystemPanel({
           )}
 
           <header>
-            <div className="text-[10px] uppercase tracking-[0.32em] text-[#c9a84c]/45">
+            <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-faint">
               {shown.designation}
             </div>
             <h2
-              className="mt-1.5 font-title text-[2rem] font-black leading-[1.05] text-[#f0d080]"
-              style={{ textShadow: `0 0 18px ${accent}66` }}
+              className="mt-1.5 font-display text-[1.9rem] font-bold leading-[1.05] text-fg"
+              style={{ textShadow: `0 0 22px ${accent}55` }}
             >
               {shown.name}
             </h2>
-            <div className="mt-1.5 text-sm italic tracking-wide text-cyan-200/85">
+            <div className="mt-1.5 text-sm tracking-wide text-cyan">
               {shown.starType}
             </div>
           </header>
@@ -159,14 +157,11 @@ export default function SystemPanel({
           <Divider />
 
           <section>
-            <SectionTitle>Aureate Chain Presence</SectionTitle>
-            <div
-              className="text-sm font-semibold uppercase tracking-[0.12em]"
-              style={{ color: chainStyle?.color, opacity: chainStyle?.opacity }}
-            >
+            <SectionTitle index="01">Aureate Chain Presence</SectionTitle>
+            <div className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan">
               ⛓ {shown.chain.level}
             </div>
-            <p className="mt-1 text-sm leading-relaxed text-[#e9e2d0]/65">
+            <p className="mt-1 text-sm leading-relaxed text-muted">
               {shown.chain.detail}
             </p>
           </section>
@@ -174,7 +169,7 @@ export default function SystemPanel({
           <Divider />
 
           <section>
-            <SectionTitle>Charted Bodies</SectionTitle>
+            <SectionTitle index="02">Charted Bodies</SectionTitle>
             <ul className="flex flex-col gap-3">
               {shown.bodies.map((body) => (
                 <li key={body.name} className="flex gap-2.5">
@@ -186,13 +181,13 @@ export default function SystemPanel({
                     }}
                   />
                   <div>
-                    <span className="text-sm font-semibold tracking-wide text-[#e9e2d0]/90">
+                    <span className="text-sm font-semibold tracking-wide text-fg/90">
                       {body.name}
                       {body.highlight && (
-                        <span className="ml-1 text-[#f0d080]">★</span>
+                        <span className="ml-1 text-accent">★</span>
                       )}
                     </span>
-                    <p className="text-[13px] italic leading-snug text-[#e9e2d0]/55">
+                    <p className="text-[13px] leading-snug text-faint">
                       {body.description}
                     </p>
                   </div>
@@ -200,7 +195,7 @@ export default function SystemPanel({
               ))}
             </ul>
             {uncharted > 0 && (
-              <p className="mt-3 text-[11px] italic leading-snug text-[#c9a84c]/40">
+              <p className="mt-3 font-mono text-[11px] leading-snug text-accent/40">
                 + {uncharted} uncharted{" "}
                 {uncharted === 1 ? "body" : "bodies"} detected · survey pending
               </p>
@@ -210,10 +205,10 @@ export default function SystemPanel({
           <Divider />
 
           <section className="flex items-center justify-between gap-3">
-            <SectionTitle>Threat</SectionTitle>
+            <SectionTitle index="03">Threat</SectionTitle>
             {threat && (
               <span
-                className="rounded-sm border px-3 py-1 font-display text-[11px] font-bold uppercase tracking-[0.22em]"
+                className="rounded-sm border px-3 py-1 font-mono text-[11px] uppercase tracking-[0.18em]"
                 style={{
                   color: threat.color,
                   borderColor: threat.color,
@@ -229,8 +224,8 @@ export default function SystemPanel({
           <Divider />
 
           <section>
-            <SectionTitle>Navigator&apos;s Notes</SectionTitle>
-            <blockquote className="dropcap border-l-2 border-[#c9a84c]/70 pl-3.5 text-sm italic leading-relaxed text-[#e9e2d0]/75">
+            <SectionTitle index="04">Navigator&apos;s Notes</SectionTitle>
+            <blockquote className="border-l-2 border-cyan/60 pl-3.5 text-sm italic leading-relaxed text-muted">
               {shown.lore}
             </blockquote>
           </section>
