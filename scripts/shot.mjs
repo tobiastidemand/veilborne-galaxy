@@ -33,7 +33,7 @@ page.on("console", (m) => {
 });
 
 await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
-await page.waitForSelector("canvas", { timeout: 30000 });
+await page.waitForSelector("canvas, h1", { timeout: 30000 });
 await new Promise((r) => setTimeout(r, 4000));
 
 for (const step of actions.split(";").map((s) => s.trim()).filter(Boolean)) {

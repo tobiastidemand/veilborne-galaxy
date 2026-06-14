@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Canvas } from "@react-three/fiber";
 import gsap from "gsap";
 
@@ -80,7 +81,11 @@ function writeViewToURL(view: View) {
   if (view.mode !== "galaxy") params.set("system", view.systemId);
   if (view.mode === "planet") params.set("body", view.bodyName);
   const qs = params.toString();
-  window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+  window.history.replaceState(
+    null,
+    "",
+    qs ? `?${qs}` : window.location.pathname,
+  );
 }
 
 // Space-tech palette — varied hues that still read like HUD/terminal signals.
@@ -109,7 +114,7 @@ function Legend({
 }) {
   // Open by default on desktop, collapsed on phones to stay out of the way.
   const [open, setOpen] = useState(
-    () => window.matchMedia("(min-width: 768px)").matches
+    () => window.matchMedia("(min-width: 768px)").matches,
   );
 
   return (
@@ -121,7 +126,11 @@ function Legend({
       {/* HUD corner accents + fading top/bottom border lines */}
       <div className="pointer-events-none absolute inset-0 z-[2] text-accent">
         <HudCorner corner="tl" size={15} className="absolute left-1 top-1" />
-        <HudCorner corner="br" size={15} className="absolute bottom-1 right-1" />
+        <HudCorner
+          corner="br"
+          size={15}
+          className="absolute bottom-1 right-1"
+        />
         <span
           className="absolute left-6 right-6 top-0 h-px"
           style={{
@@ -179,7 +188,10 @@ function Legend({
                   <div key={s.id} className="flex items-center gap-2.5">
                     <span
                       className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ backgroundColor: dot, boxShadow: `0 0 5px ${dot}` }}
+                      style={{
+                        backgroundColor: dot,
+                        boxShadow: `0 0 5px ${dot}`,
+                      }}
                     />
                     <span className="text-[11px] leading-tight text-muted">
                       {s.starType}
@@ -233,24 +245,38 @@ function DMConsole({
   return (
     <div className="panel panel-grid scroll-thin pointer-events-auto fixed left-3 top-[4.6rem] z-[46] max-h-[80vh] w-[272px] overflow-y-auto rounded-md border border-white/10 bg-gradient-to-b from-bg/90 to-bg/30 [&>*]:relative [&>*]:z-[1]">
       <div className="flex items-center justify-between px-4 pb-1 pt-3">
-        <span className="flex items-center gap-2">
-          <span className="index-marker">DM</span>
-          <span className="font-display text-[12px] font-medium tracking-[0.02em] text-fg">
-            Console
-          </span>
-          <span
-            title={
-              campaign.shared
-                ? "Live — changes sync to players"
-                : "Local only — players won't see changes"
-            }
-            className={`h-1.5 w-1.5 rounded-full ${
-              campaign.shared ? "bg-[#5cd6a0]" : "bg-[#ffab5c]"
-            }`}
-          />
-          <span className="font-mono text-[8px] tracking-[0.16em] text-faint">
-            {campaign.shared ? "LIVE" : "LOCAL"}
-          </span>
+        <span className="flex items-center gap-2 font-display text-[11px] font-bold uppercase tracking-[0.22em] text-[#7fe0ff]">
+          DM Console
+          {(() => {
+            const status = campaign.denied
+              ? {
+                  dot: "bg-[#e84daa]",
+                  label: "DENIED",
+                  title: "Writes rejected — append ?key=<token> to the URL",
+                }
+              : campaign.shared
+                ? {
+                    dot: "bg-[#7fff9f]",
+                    label: "LIVE",
+                    title: "Live — changes sync to players",
+                  }
+                : {
+                    dot: "bg-[#ff9f40]",
+                    label: "LOCAL",
+                    title: "Local only — players won't see changes",
+                  };
+            return (
+              <>
+                <span
+                  title={status.title}
+                  className={`h-1.5 w-1.5 rounded-full ${status.dot}`}
+                />
+                <span className="text-[8px] font-normal tracking-[0.18em] text-[#e9e2d0]/40">
+                  {status.label}
+                </span>
+              </>
+            );
+          })()}
         </span>
         <button
           onClick={onClose}
@@ -297,9 +323,7 @@ function DMConsole({
                   onClick={() => campaign.setParty(s.id)}
                   title="Set party here"
                   className={`px-1 text-[12px] leading-none transition-colors ${
-                    isParty
-                      ? "text-accent"
-                      : "text-white/25 hover:text-accent"
+                    isParty ? "text-accent" : "text-white/25 hover:text-accent"
                   }`}
                 >
                   ◆
@@ -364,7 +388,7 @@ export default function GalaxyMap() {
       setView({ mode: "system", systemId: id });
       setFlightNonce((n) => n + 1);
     },
-    [dmMode, isDiscovered]
+    [dmMode, isDiscovered],
   );
 
   const selectPlanet = useCallback((systemId: string, bodyName: string) => {
@@ -409,7 +433,7 @@ export default function GalaxyMap() {
   // Lazy init is safe here: GalaxyMap is dynamically imported with ssr:false,
   // so this only ever runs in the browser.
   const [sceneFailed, setSceneFailed] = useState<"unsupported" | "lost" | null>(
-    () => (hasWebGL() ? null : "unsupported")
+    () => (hasWebGL() ? null : "unsupported"),
   );
 
   // Esc / Backspace steps back: planet → system → galaxy.
@@ -426,7 +450,7 @@ export default function GalaxyMap() {
       gsap.fromTo(
         backRef.current,
         { opacity: 0, y: 8 },
-        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", delay: 0.4 }
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", delay: 0.4 },
       );
     }
   }, [focusSystemId]);
@@ -436,7 +460,7 @@ export default function GalaxyMap() {
   const handleReset = useCallback(() => {
     if (
       window.confirm(
-        "Reset campaign? This clears all charted systems, the party location and its route."
+        "Reset campaign? This clears all charted systems, the party location and its route.",
       )
     ) {
       campaign.reset();
@@ -445,14 +469,15 @@ export default function GalaxyMap() {
   }, [campaign, goToGalaxy]);
 
   const panelSystem = focusSystemId ? systemById(focusSystemId) : null;
-  const systemPanelOpen = view.mode === "system" && systemArrived && !panelDismissed;
+  const systemPanelOpen =
+    view.mode === "system" && systemArrived && !panelDismissed;
 
   const selectedPlanet = view.mode === "planet" ? view.bodyName : null;
   const planetBody =
     view.mode === "planet"
-      ? getSystemBodies(systemById(view.systemId)).find(
-          (b) => b.name === view.bodyName
-        ) ?? null
+      ? (getSystemBodies(systemById(view.systemId)).find(
+          (b) => b.name === view.bodyName,
+        ) ?? null)
       : null;
   const planetSystemName =
     view.mode === "planet" ? systemById(view.systemId).name : "";
@@ -477,7 +502,7 @@ export default function GalaxyMap() {
                 e.preventDefault();
                 setSceneFailed("lost");
               },
-              { once: true }
+              { once: true },
             );
           }}
         >
@@ -599,6 +624,14 @@ export default function GalaxyMap() {
         />
       )}
 
+      {/* battle stations */}
+      <Link
+        href="/battle"
+        className="pointer-events-auto fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded border border-[#ff6b6b]/40 bg-[#07051a]/80 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-[0.22em] text-[#ff6b6b]/80 backdrop-blur-sm transition-colors hover:text-[#ff6b6b]"
+      >
+        ⚔ Battle Stations
+      </Link>
+
       {/* instructions — only in the wide galaxy view */}
       {!focusSystemId && (
         <div className="pointer-events-none fixed bottom-3 right-3 z-40 max-w-[45vw] text-right sm:bottom-5 sm:right-5 sm:max-w-none">
@@ -617,9 +650,13 @@ export default function GalaxyMap() {
         reducedMotion={reducedMotion}
         accent={accent}
         dmMode={dmMode}
-        discovered={focusSystemId ? campaign.isDiscovered(focusSystemId) : false}
+        discovered={
+          focusSystemId ? campaign.isDiscovered(focusSystemId) : false
+        }
         isParty={!!focusSystemId && campaign.party === focusSystemId}
-        onToggleDiscovered={() => focusSystemId && campaign.toggleDiscovered(focusSystemId)}
+        onToggleDiscovered={() =>
+          focusSystemId && campaign.toggleDiscovered(focusSystemId)
+        }
         onSetParty={() => focusSystemId && campaign.setParty(focusSystemId)}
         onBack={dismissPanel}
       />

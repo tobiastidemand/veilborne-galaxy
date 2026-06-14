@@ -8,6 +8,7 @@ const DISCOVERED_KEY = "veilborn.discovered";
 const PARTY_KEY = "veilborn.party";
 const TRAIL_KEY = "veilborn.trail";
 const DM_KEY = "veilborn.dm";
+const TOKEN_KEY = "veilborn.dmtoken";
 
 const API = "/api/campaign";
 const POLL_MS = 4000;
@@ -31,6 +32,17 @@ function readDmFlag(): boolean {
     return localStorage.getItem(DM_KEY) === "1";
   } catch {
     return false;
+  }
+}
+
+// Write token: provided once via ?key=… (then persisted), sent on every push.
+function readToken(): string {
+  const key = new URLSearchParams(window.location.search).get("key");
+  if (key) return key;
+  try {
+    return localStorage.getItem(TOKEN_KEY) ?? "";
+  } catch {
+    return "";
   }
 }
 
@@ -84,6 +96,8 @@ export interface Campaign {
   exitDm: () => void;
   /** True once the shared server store has been reached at least once. */
   shared: boolean;
+  /** True if a write was rejected for a missing/wrong DM token. */
+  denied: boolean;
 }
 
 /**
@@ -102,6 +116,17 @@ export function useCampaign(): Campaign {
   // DM gates pushing until it has reconciled with the server once.
   const [hydrated, setHydrated] = useState(() => !readDmFlag());
   const [shared, setShared] = useState(false);
+  const [denied, setDenied] = useState(false);
+  const [dmToken] = useState(readToken);
+
+  useEffect(() => {
+    if (!dmToken) return;
+    try {
+      localStorage.setItem(TOKEN_KEY, dmToken);
+    } catch {
+      /* ignore */
+    }
+  }, [dmToken]);
 
   // Tracks the last state we synced (sent or received) so we don't echo it.
   const remoteSnapRef = useRef("");
@@ -150,19 +175,26 @@ export function useCampaign(): Campaign {
       try {
         const res = await fetch(API, {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: {
+            "content-type": "application/json",
+            ...(dmToken ? { "x-dm-token": dmToken } : {}),
+          },
           body: JSON.stringify({ discovered: [...discovered], party, trail }),
         });
         if (res.ok) {
           remoteSnapRef.current = snap;
           setShared(true);
+          setDenied(false);
+        } else if (res.status === 401) {
+          setDenied(true);
+          setShared(false);
         }
       } catch {
         /* offline */
       }
     }, 400);
     return () => clearTimeout(id);
-  }, [dmMode, hydrated, discovered, party, trail]);
+  }, [dmMode, hydrated, discovered, party, trail, dmToken]);
 
   // Players: poll the shared store and apply anything newer.
   useEffect(() => {
@@ -262,5 +294,6 @@ export function useCampaign(): Campaign {
     reset,
     exitDm,
     shared,
+    denied,
   };
 }
