@@ -245,38 +245,24 @@ function DMConsole({
   return (
     <div className="panel panel-grid scroll-thin pointer-events-auto fixed left-3 top-[4.6rem] z-[46] max-h-[80vh] w-[272px] overflow-y-auto rounded-md border border-white/10 bg-gradient-to-b from-bg/90 to-bg/30 [&>*]:relative [&>*]:z-[1]">
       <div className="flex items-center justify-between px-4 pb-1 pt-3">
-        <span className="flex items-center gap-2 font-display text-[11px] font-bold uppercase tracking-[0.22em] text-[#7fe0ff]">
-          DM Console
-          {(() => {
-            const status = campaign.denied
-              ? {
-                  dot: "bg-[#e84daa]",
-                  label: "DENIED",
-                  title: "Writes rejected — append ?key=<token> to the URL",
-                }
-              : campaign.shared
-                ? {
-                    dot: "bg-[#7fff9f]",
-                    label: "LIVE",
-                    title: "Live — changes sync to players",
-                  }
-                : {
-                    dot: "bg-[#ff9f40]",
-                    label: "LOCAL",
-                    title: "Local only — players won't see changes",
-                  };
-            return (
-              <>
-                <span
-                  title={status.title}
-                  className={`h-1.5 w-1.5 rounded-full ${status.dot}`}
-                />
-                <span className="text-[8px] font-normal tracking-[0.18em] text-[#e9e2d0]/40">
-                  {status.label}
-                </span>
-              </>
-            );
-          })()}
+        <span className="flex items-center gap-2">
+          <span className="index-marker">DM</span>
+          <span className="font-display text-[12px] font-medium tracking-[0.02em] text-fg">
+            Console
+          </span>
+          <span
+            title={
+              campaign.shared
+                ? "Live — changes sync to players"
+                : "Local only — players won't see changes"
+            }
+            className={`h-1.5 w-1.5 rounded-full ${
+              campaign.shared ? "bg-[#5cd6a0]" : "bg-[#ffab5c]"
+            }`}
+          />
+          <span className="font-mono text-[8px] tracking-[0.16em] text-faint">
+            {campaign.shared ? "LIVE" : "LOCAL"}
+          </span>
         </span>
         <button
           onClick={onClose}
