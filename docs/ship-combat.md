@@ -39,7 +39,7 @@
 |---|---|---|
 | **Hull** | The ship's life. 0 = crippled (GM mercy table), not auto-destroyed. | Hard to restore mid-fight; the Engineer's Brace finish is the main way. |
 | **Shields** | Damage buffer. Regenerates a little each turn; can be over-charged. | Weapon types interact differently (see §6). |
-| **Tier** | Ship/crew rank (1–5). The flat bonus added to rolls. | The campaign progression axis. |
+| **Tier** | Two tracks that **add on every roll**: **Crew Tier** (party level 1–4, shared) **+ Module Tier** (the acting officer's own module, uncapped). See `ship-building.md` §3. | The campaign progression axis. |
 | **Speed** | How nimble the ship is. Drives **Initiative** — who Strikes and who Braces (§3). | Set by frame; the Navigator can boost it. |
 | **Sync** | A streak counter: successful chains in a row. At **3**, the Commander banks an **Epic Chain** (§4). | Resets when a Finisher fails. The crew's teamwork meter. |
 | **Heat** *(optional)* | Builds from overcharging; vents each turn. Too much = a system falters. | A push-your-luck knob; safe to ignore for a first game. |
@@ -163,8 +163,12 @@ keeps the chain snappy. Roll only for **attacks and contests** — usually a
 Finish, occasionally a Link:
 
 ```
-d20 + Tier + situational modifiers  vs  the target's TN (Target Number)
+d20 + Crew Tier + Module Tier + chain bonuses  vs  the target's TN
 ```
+
+Three things add: your **character** (Crew Tier), your **ship** (the acting
+officer's Module Tier), and your **crew** (the chain's hand-offs). E.g. a Crew-3
+Navigator with a Tier-3 Veil Drive and 3 chain bonuses rolls **d20 + 9**.
 
 - **Hit:** meet or beat the TN.
 - **Degrees of success:** every full **4 over** the TN adds a *bonus effect* —
@@ -210,11 +214,12 @@ player real command-chair weight (and ends table arguments fast).
 - **Open · Brace — "All Hands":** read the incoming threat. The next officer gains
   **+Tier** to its defensive action.
 
-**Planned — the Commander's role-mirroring kit (on hold until ship-building is
-finished).** Rather than a fixed toolbox, the Commander *unlocks one ability that
-echoes each of the five seats* as the crew rises in Tier (additive — new tiers add
-options, they never replace old ones), reaching **five at Tier 5** (one per role).
-Each is a support play that sets up that seat's moment. Example seed:
+**The Commander's role-mirroring kit (lives in the Bridge module —
+`ship-building.md` §6).** Rather than a fixed toolbox, the Commander *unlocks one
+ability that echoes each of the five seats* as the **Bridge** rises in Tier
+(additive — new tiers add options, they never replace old ones), reaching all five
+seats by **Tier 4** (the Bridge's *One Mind*). Each is a support play that sets up
+that seat's moment. Example seed:
 
 - *Tier 1 — Switch Weapon Systems (Gunner-facing):* the Commander orders a
   swap of weapon/ammunition type — ideal right before a Gunner Finisher, letting
@@ -283,14 +288,13 @@ below.
 > offense and defense; every role can finish either chain. What changes turn to
 > turn is *the order* — and that's the game.
 
-> **Planned expansion (on hold until ship-building is finished).** The matrix
-> above is the *base*. The full design gives **every position at least two Link
-> options and two Finish options to choose from**, and adds **up to two more
-> abilities per Tier**, plus **scaling** on existing abilities as crew Tier rises.
-> This is deliberately deferred: ship upgrades will feed the final number-crunching
-> and combat abilities, so the tier ladder is designed *after* the ship-building
-> system is locked. Until then, the four combat seats use the single Link/Finish
-> shown, and the Commander uses Call the Shot / All Hands.
+> **The ability ladder lives in the modules (`ship-building.md` §6–7).** The
+> matrix above is each seat's **Tier-1 base**. As an officer raises *their module*
+> (Weaponry, Optics, Engine, Reactor, Bridge), each Tier unlocks another option
+> and/or scales an existing one — so by **Tier 4** every seat has the full
+> ≥2-Link / ≥2-Finish kit. A role's `+Tier` on rolls is *their module's* Tier.
+> *Implementation note:* the app still ships the Tier-1 base; the per-module ladder
+> is the next build now that the ship system is fleshed out.
 
 ---
 
@@ -408,7 +412,7 @@ agree. All are first-pass and meant to be tuned in play.
 | Dial | Value | Note |
 |---|---|---|
 | **Initiative** | `d20 + Speed` per ship; high wins | winner Strikes, loser Braces; ties → higher Tier. |
-| **Attack roll** | `d20 + Tier + hand-offs vs TN` | TN is raised by the Brace chain at reveal. |
+| **Attack roll** | `d20 + Crew Tier + Module Tier + chain vs TN` | character + ship + crew; TN is raised by the Brace chain at reveal. |
 | **Degree of success** | every **4** over the TN | each degree = a bonus effect (+1 damage or a condition). |
 | **Critical** | natural **20** (Killbox: **19–20**) | doubles damage, applies a condition. |
 | **Heavy finish scaling** | **+2 damage per link** | Killing Blow, Reactor Lance. |
@@ -428,21 +432,23 @@ agree. All are first-pass and meant to be tuned in play.
 | **Missile** | 3 | −1 | +1, can be shot down | 2 |
 | **AP / Lance** | 2 | bypasses | applies **Breach** | 3 |
 
-### Player ship by Tier
+### Player ship baselines by module Tier (1–4)
 
-| Tier | +bonus | Hull | Shields | Shield regen / turn |
-|---|---|---|---|---|
-| 1 | +1 | 16 | 6 | 2 |
-| 2 | +2 | 22 | 8 | 2 |
-| 3 | +3 | 28 | 10 | 3 |
-| 4 | +4 | 36 | 12 | 3 |
-| 5 | +5 | 44 | 14 | 4 |
+Each stat comes from its **module** at that Tier (`ship-building.md` §6). A ship
+with all modules at the same Tier reads like a row below; mixed builds mix rows.
+`Module +` is just that module's Tier — the **roll bonus on top is Crew Tier +
+Module Tier + chain** (§5).
 
-**Speed** defaults to **3**; it's set by the frame (a Wraith is faster, a Bulwark
-slower) and the Navigator can boost it. (Ship-building redistributes Hull/Shields
-around the same totals and sets Speed — see `ship-building.md`.)
+| Module Tier | Module + | Hull (Hull mod) | Shields (Reactor) | Regen | Speed (Engine) | AC |
+|---|---|---|---|---|---|---|
+| 1 | +1 | 16 | 6 | 2 | 3 | 10 |
+| 2 | +2 | 22 | 8 | 2 | 4 | 11 |
+| 3 | +3 | 30 | 10 | 3 | 5 | 12 |
+| 4 | +4 | 40 | 12 | 3 | 6 | 13 |
 
-### Enemy stat-by-Tier (Line size = ×1)
+Class traits shift Speed/Hull (a Wraith is faster, a Warden tougher and slower).
+
+### Enemy stat-by-Tier (1–4, Line size = ×1)
 
 | Tier | Hull | Shields | TN | Attack |
 |---|---|---|---|---|
@@ -450,7 +456,6 @@ around the same totals and sets Speed — see `ship-building.md`.)
 | 2 | 18 | 4 | 13 | 4 |
 | 3 | 24 | 6 | 14 | 5 |
 | 4 | 32 | 8 | 15 | 6 |
-| 5 | 40 | 10 | 16 | 7 |
 
 Enemy **Speed** defaults to its Tier + 1 (a Skirmisher is +2 faster, an Elite
 −1 slower) — so light foes tend to win the initiative and press, heavies tend to
@@ -501,11 +506,14 @@ Sync 5, no Speed/Initiative). v0.4 changes:
 - **Resolution is opposed** — Strike chain vs Brace chain, revealed and rolled
   together in the Rolls beat.
 - **Commander reframed** — first position, pure-support, final say on the order;
-  gains a tiered, role-mirroring kit *(on hold — see §6)*.
-- **Role matrix expansion** *(on hold)* — ≥2 Link and ≥2 Finish options per seat,
-  +2 abilities per Tier, and ability scaling, all designed *after* ship-building is
-  locked (hull upgrades feed the numbers).
+  gains a role-mirroring kit that lives in the **Bridge module** (`ship-building.md`).
+- **Tier cap is now 4** (matches the crew level cap) and **per-module** — a role's
+  `+Tier` is *their* module's Tier.
+- **Role matrix expansion** — the ability ladder (≥2 Link / ≥2 Finish per seat,
+  one new option + scaling per Tier) is now defined by the **module system**
+  (`ship-building.md` §6–7), not a flat crew Tier.
 
-**App status:** the engine still runs v0.3. The v0.4 initiative turn + the tiered
-ability ladder are intentionally **not yet built in the app** — they wait on the
-ship-building system being finished, so the number-crunching is done once.
+**App status:** the engine runs the **v0.4 initiative turn** (initiative, Speed,
+one chain per turn, Sync 3). Still **not built in the app:** the **module/ship
+system** and the **per-module ability ladder** (and the Tier-5→4 trim). Those are
+the next big build now that both systems are fleshed out on paper.
