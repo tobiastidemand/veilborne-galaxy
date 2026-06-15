@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 
 import { HudCorner } from "./Hud";
 
@@ -145,7 +146,7 @@ export function HudSettings() {
 
         <div
           className="overflow-hidden px-4 transition-[max-height,opacity] duration-300 ease-out"
-          style={{ maxHeight: open ? 220 : 0, opacity: open ? 1 : 0 }}
+          style={{ maxHeight: open ? 300 : 0, opacity: open ? 1 : 0 }}
         >
           <div className="pb-4 pt-1">
             <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.24em] text-faint">
@@ -185,6 +186,18 @@ export function HudSettings() {
                 );
               })}
             </div>
+
+            <div className="hairline my-3" />
+
+            <Link
+              href="/ki-hologram"
+              className="flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 text-fg transition-colors hover:bg-white/[0.04] hover:text-accent"
+            >
+              <span className="index-marker">KI</span>
+              <span className="font-mono text-[11px] tracking-[0.03em]">
+                Talk to KI
+              </span>
+            </Link>
           </div>
         </div>
       </div>
