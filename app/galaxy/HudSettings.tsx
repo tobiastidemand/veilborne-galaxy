@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 
 import { HudCorner } from "./Hud";
@@ -89,9 +89,10 @@ function initialTheme(): string {
   return "blue";
 }
 
-export function HudSettings() {
+export function HudSettings({ dm }: { dm?: ReactNode }) {
   const [theme, setThemeState] = useState(initialTheme);
-  const [open, setOpen] = useState(false);
+  // Default open when DM controls are present, so they're visible at a glance.
+  const [open, setOpen] = useState(() => Boolean(dm));
 
   // Apply on mount and whenever the choice changes.
   useEffect(() => {
@@ -145,8 +146,10 @@ export function HudSettings() {
         </button>
 
         <div
-          className="overflow-hidden px-4 transition-[max-height,opacity] duration-300 ease-out"
-          style={{ maxHeight: open ? 300 : 0, opacity: open ? 1 : 0 }}
+          className={`px-4 transition-[max-height,opacity] duration-300 ease-out ${
+            open ? "scroll-thin overflow-y-auto" : "overflow-hidden"
+          }`}
+          style={{ maxHeight: open ? "min(72vh, 620px)" : 0, opacity: open ? 1 : 0 }}
         >
           <div className="pb-4 pt-1">
             <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.24em] text-faint">
@@ -198,6 +201,16 @@ export function HudSettings() {
                 Talk to KI
               </span>
             </Link>
+
+            {dm && (
+              <>
+                <div className="hairline my-3" />
+                <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.24em] text-faint">
+                  Dungeon Master
+                </div>
+                {dm}
+              </>
+            )}
           </div>
         </div>
       </div>

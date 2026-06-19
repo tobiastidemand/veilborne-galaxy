@@ -425,11 +425,13 @@ function OrbitingBody({
   cfg,
   systemId,
   selected,
+  isParty = false,
   onSelectPlanet,
 }: {
   cfg: BodyConfig;
   systemId: string;
   selected: boolean;
+  isParty?: boolean;
   onSelectPlanet: (systemId: string, bodyName: string) => void;
 }) {
   const posRef = useRef<THREE.Group>(null);
@@ -512,6 +514,28 @@ function OrbitingBody({
         </mesh>
       )}
 
+      {isParty && (
+        <>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[reach * 1.5, reach * 1.78, 48]} />
+            <meshBasicMaterial
+              color="#7fe0ff"
+              transparent
+              opacity={0.85}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+            />
+          </mesh>
+          <Html center position={[0, reach + 1.15, 0]} zIndexRange={[24, 0]}>
+            <div className="pointer-events-none select-none whitespace-nowrap rounded-full border border-cyan/60 bg-bg/85 px-2.5 py-0.5 backdrop-blur-sm">
+              <span className="font-mono text-[10px] font-medium tracking-[0.2em] text-cyan">
+                ◆ THE PARTY
+              </span>
+            </div>
+          </Html>
+        </>
+      )}
+
       {(hovered || selected) && (
         <Html center position={[0, reach + 0.6, 0]} zIndexRange={[20, 0]}>
           <div
@@ -531,10 +555,12 @@ function OrbitingBody({
 export function OrbitingPlanets({
   system,
   selectedPlanet,
+  partyBody,
   onSelectPlanet,
 }: {
   system: StarSystemData;
   selectedPlanet: string | null;
+  partyBody?: string | null;
   onSelectPlanet: (systemId: string, bodyName: string) => void;
 }) {
   // Cached per system (see buildBodies) so textures persist and aren't
@@ -563,6 +589,7 @@ export function OrbitingPlanets({
           cfg={cfg}
           systemId={system.id}
           selected={selectedPlanet === cfg.body.name}
+          isParty={partyBody === cfg.body.name}
           onSelectPlanet={onSelectPlanet}
         />
       ))}

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 60 bash -c 'until curl -sf -o /dev/null http://localhost:3000/; do sleep 2; done')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/)",
+      "PowerShell(node scripts\\\\shot.mjs http://localhost:3000 scripts\\\\galaxy-zoom.png click-center-star)"
+    ]
+  }
+}

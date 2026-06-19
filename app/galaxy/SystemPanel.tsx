@@ -4,19 +4,34 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
 
 import {
+  PRESENCE_STYLE,
   THREAT_STYLE,
   getSystemBodies,
+  systemFactions,
   type StarSystemData,
 } from "./data";
 import { PanelHudFrame } from "./Hud";
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  valueColor,
+}: {
+  label: string;
+  value: string;
+  valueColor?: string;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-1.5">
       <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
         {label}
       </span>
-      <span className="text-right text-sm text-fg/90">{value}</span>
+      <span
+        className="text-right text-sm text-fg/90"
+        style={valueColor ? { color: valueColor } : undefined}
+      >
+        {value}
+      </span>
     </div>
   );
 }
@@ -84,10 +99,21 @@ export default function SystemPanel({
     });
   }, [open, shown, reducedMotion]);
 
+  // Survey readings, derived from the charted bodies. Stations and derelicts
+  // are reported separately as "Other"; only natural exotica count as anomalies.
+  const bodies = shown ? getSystemBodies(shown) : [];
+  const planetCount = bodies.filter((b) => (b.kind ?? "planet") === "planet")
+    .length;
+  const otherCount = bodies.filter(
+    (b) => b.kind === "station" || b.kind === "derelict"
+  ).length;
+  const anomalyCount = bodies.filter(
+    (b) => b.kind === "fragment" || b.kind === "mirror" || b.kind === "anomaly"
+  ).length;
+  const uncharted = bodies.filter((b) => b.synthetic).length;
+
   const threat = shown ? THREAT_STYLE[shown.threat] : null;
-  const uncharted = shown
-    ? getSystemBodies(shown).filter((b) => b.synthetic).length
-    : 0;
+  const factions = shown ? systemFactions(shown) : [];
 
   return (
     <aside
@@ -115,10 +141,9 @@ export default function SystemPanel({
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={onSetParty}
-                  disabled={isParty}
-                  className="rounded border border-accent/40 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-accent transition-colors hover:bg-accent/10 disabled:cursor-default disabled:opacity-40"
+                  className="rounded border border-accent/40 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-accent transition-colors hover:bg-accent/10"
                 >
-                  {isParty ? "◆ Party is here" : "Set party here"}
+                  {isParty ? "◆ Party is here — clear" : "Set party here"}
                 </button>
                 <button
                   onClick={onToggleDiscovered}
@@ -147,29 +172,83 @@ export default function SystemPanel({
 
           <Divider />
 
+          {/* Survey readings — the first thing the Survey records on a system. */}
           <section>
-            <Stat label="Star Type" value={shown.starType} />
-            <Stat label="Planets" value={String(shown.planets)} />
-            <Stat label="Anomalies" value={String(shown.anomalies)} />
+            <Stat label="Planets" value={String(planetCount)} />
+            <Stat label="Anomalies" value={String(anomalyCount)} />
+            <Stat label="Other (stations &c.)" value={String(otherCount)} />
             <Stat label="Distance from Core" value={shown.distance} />
+            {threat && (
+              <div className="flex items-baseline justify-between gap-3 py-1.5">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+                  Threat Level
+                </span>
+                <span
+                  className="rounded-sm border px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.16em]"
+                  style={{
+                    color: threat.color,
+                    borderColor: threat.color,
+                    backgroundColor: threat.bg,
+                    boxShadow: `inset 0 0 10px ${threat.bg}`,
+                  }}
+                >
+                  {shown.threat}
+                </span>
+              </div>
+            )}
           </section>
 
           <Divider />
 
           <section>
-            <SectionTitle index="01">Aureate Chain Presence</SectionTitle>
-            <div className="text-sm font-semibold uppercase tracking-[0.12em] text-cyan">
-              ⛓ {shown.chain.level}
-            </div>
-            <p className="mt-1 text-sm leading-relaxed text-muted">
-              {shown.chain.detail}
+            <SectionTitle index="01">Survey Notes</SectionTitle>
+            <blockquote className="border-l-2 border-cyan/60 pl-3.5 text-sm italic leading-relaxed text-muted">
+              {shown.lore}
+            </blockquote>
+          </section>
+
+          <Divider />
+
+          <section>
+            <SectionTitle index="02">Factions Present</SectionTitle>
+            <ul className="flex flex-col gap-2.5">
+              {factions.map((f) => {
+                const st = PRESENCE_STYLE[f.presence];
+                return (
+                  <li key={f.name} className="flex gap-2.5">
+                    <span
+                      className="mt-[6px] h-2 w-2 shrink-0 rounded-full"
+                      style={{
+                        backgroundColor: st.color,
+                        boxShadow: `0 0 6px ${st.color}`,
+                      }}
+                    />
+                    <div>
+                      <span
+                        className="text-sm font-semibold tracking-wide"
+                        style={{ color: st.color }}
+                      >
+                        {f.name}
+                      </span>
+                      {f.note && (
+                        <p className="text-[13px] leading-snug text-faint">
+                          {f.note}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="mt-2.5 font-mono text-[9px] uppercase tracking-[0.16em] text-faint/60">
+              ● Full · ● Some · ● None
             </p>
           </section>
 
           <Divider />
 
           <section>
-            <SectionTitle index="02">Charted Bodies</SectionTitle>
+            <SectionTitle index="03">Charted Bodies</SectionTitle>
             <ul className="flex flex-col gap-3">
               {shown.bodies.map((body) => (
                 <li key={body.name} className="flex gap-2.5">
@@ -200,34 +279,6 @@ export default function SystemPanel({
                 {uncharted === 1 ? "body" : "bodies"} detected · survey pending
               </p>
             )}
-          </section>
-
-          <Divider />
-
-          <section className="flex items-center justify-between gap-3">
-            <SectionTitle index="03">Threat</SectionTitle>
-            {threat && (
-              <span
-                className="rounded-sm border px-3 py-1 font-mono text-[11px] uppercase tracking-[0.18em]"
-                style={{
-                  color: threat.color,
-                  borderColor: threat.color,
-                  backgroundColor: threat.bg,
-                  boxShadow: `inset 0 0 12px ${threat.bg}, 0 0 10px ${threat.bg}`,
-                }}
-              >
-                {shown.threat}
-              </span>
-            )}
-          </section>
-
-          <Divider />
-
-          <section>
-            <SectionTitle index="04">Navigator&apos;s Notes</SectionTitle>
-            <blockquote className="border-l-2 border-cyan/60 pl-3.5 text-sm italic leading-relaxed text-muted">
-              {shown.lore}
-            </blockquote>
           </section>
         </div>
       )}

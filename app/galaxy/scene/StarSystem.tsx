@@ -145,8 +145,8 @@ function BlackHoleCore({ system }: { system: StarSystemData }) {
   );
 }
 
-// Two opposed cones sharing the texture, bright at the star and tapering /
-// fading to a point at each tip.
+// A single beam: a point at the star, flaring outward into a cone — a lighthouse
+// beam that sweeps the dark.
 function BeamCones({
   radius,
   length,
@@ -168,17 +168,12 @@ function BeamCones({
       side={THREE.DoubleSide}
     />
   );
+  // Cone apex sits at the star (origin); the wide base is `length` units out.
   return (
-    <>
-      <mesh position={[0, length / 2, 0]}>
-        <coneGeometry args={[radius, length, 16, 1, true]} />
-        {material}
-      </mesh>
-      <mesh position={[0, -length / 2, 0]} rotation={[Math.PI, 0, 0]}>
-        <coneGeometry args={[radius, length, 16, 1, true]} />
-        {material}
-      </mesh>
-    </>
+    <mesh position={[0, length / 2, 0]} rotation={[Math.PI, 0, 0]}>
+      <coneGeometry args={[radius, length, 20, 1, true]} />
+      {material}
+    </mesh>
   );
 }
 
@@ -194,11 +189,11 @@ function PulsarBeam({ system }: { system: StarSystemData }) {
     if (beamRef.current) beamRef.current.rotation.y = clock.elapsedTime * 0.7;
   });
 
-  const length = 5.5;
+  const length = 11;
   return (
     <group ref={beamRef} rotation={[0.25, 0, 0.18]}>
-      <BeamCones radius={0.13} length={length} opacity={0.55} map={beamMap} />
-      <BeamCones radius={0.4} length={length} opacity={0.16} map={beamMap} />
+      <BeamCones radius={0.55} length={length} opacity={0.5} map={beamMap} />
+      <BeamCones radius={1.25} length={length} opacity={0.14} map={beamMap} />
     </group>
   );
 }
@@ -233,6 +228,7 @@ export function StarSystem({
   selectedPlanet,
   discovered,
   isParty,
+  partyBody,
   dmMode,
   onSelectSystem,
   onSelectPlanet,
@@ -242,6 +238,7 @@ export function StarSystem({
   selectedPlanet: string | null;
   discovered: boolean;
   isParty: boolean;
+  partyBody?: string | null;
   dmMode: boolean;
   onSelectSystem: (id: string) => void;
   onSelectPlanet: (systemId: string, bodyName: string) => void;
@@ -356,12 +353,15 @@ export function StarSystem({
         <OrbitingPlanets
           system={system}
           selectedPlanet={selectedPlanet}
+          partyBody={partyBody}
           onSelectPlanet={onSelectPlanet}
         />
       )}
 
-      {/* party-location marker */}
-      {isParty && (
+      {/* Party marker on the star — but when the party has landed on a planet
+          and this system is focused, the planet shows its own marker instead,
+          so we hide the star one to avoid a double label. */}
+      {isParty && !(partyBody && focused) && (
         <>
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <ringGeometry

@@ -93,6 +93,37 @@ to that; a crew that has out-looted its level is simply punching above its weigh
 
 ---
 
+## Resources — Power & Aether
+
+Two resources fuel the ship, on two timescales.
+
+**Power — tactical (combat runs on Power alone).** The Reactor's working energy.
+- **Max Power** = the Reactor's rating (T1 6 → T4 12); starts each battle full.
+- **Regenerates partially each turn — +(Tier + 1)** (T1 +2 … T4 +5), up to max.
+  You never fully refill mid-fight, so blowing your whole pool leaves you lean for
+  several turns. Managing it is the Engineer's tactical game.
+- **Spent on** big abilities (overcharges, the Lance, a combat Veil-Jump escape).
+- **Reallocated to Shields, 1-for-1** (up to Max Shields). Shields have **no
+  passive regen** — they're just Power you banked as armour. Offense vs. survival,
+  every turn.
+
+**Aether — strategic (the map).** The arcane fuel the ship burns to *travel*.
+- Tracked **abstractly** as a tank ("fuel: N jumps"); refuelled at ports, mined
+  from nebulae, or looted.
+- **Veil Jumps across systems cost Aether scaled to distance** — deep runs are a
+  fuel gamble; run dry and you're **stranded**.
+- **Combat never spends Aether** (one fight is a rounding error). The combat
+  Veil-Jump *escape* is a **Power** cost, not Aether.
+
+**Veil Jump, two faces.** A **combat escape** (≈ half Max Power) vs a **map jump**
+(Aether by distance) — same drive, different scale.
+
+**System-agnostic magic.** The Veil Drive is arcane; Aether is crystallised
+Veil-stuff. Default: track Aether as fuel. On a magic system, a caster may instead
+**expend spell slots / mana** to charge a jump in a pinch.
+
+---
+
 ## 4. Ship classes
 
 Classes span three size bands. "Slots" = optional modules beyond the four
@@ -148,7 +179,7 @@ build time.)
 | 4 | 40 | 13 | Huge |
 
 - Armour Class is the base the enemy's attack is rolled against (raised further by
-  the Brace chain). Size affects boarding, some weapon bands, and how many modules
+  the Reaction chain). Size affects boarding, some weapon bands, and how many modules
   a class can physically carry.
 - **Strain:** when Hull hits 0 the ship is **crippled** (GM mercy table), and
   individual modules can be **knocked out** by Breach/critical hits until repaired
@@ -166,14 +197,18 @@ single-seat variant — same track, lower ceiling.)
 | 3 | **Battle Choir** — Epic Chain banks one Sync sooner. |
 | 4 | **One Mind** — the Commander's role-mirroring kit reaches all five seats (the Tier-4 capstone of `ship-combat.md` §6). |
 
-### Reactor (Aether Core) — *Shields · Power* (Engineer)
+### Reactor (Aether Core) — *Power · Shields* (Engineer)
 
-| Tier | Shields | Regen/turn | Power budget | Ability |
-|---|---|---|---|---|
-| 1 | 6 | 2 | 6 | **Overcharge / Damage Control** (base). |
-| 2 | 8 | 2 | 8 | **Reactor Tap** — Overcharge/Reroute give +1 more. |
-| 3 | 10 | 3 | 10 | **Damage Control Bay** — repairs +2 flat. |
-| 4 | 12 | 3 | 12 | **Singularity Vent** — once per battle, fully recharge Shields or clear a ship condition. |
+Sets **Max Power**, **Power regen/turn**, and **Max Shields**. Shields are restored
+by **reallocating Power** (no passive regen) — see *Resources*. The Engineer's
+ability ladder is in `ability-trees.md`.
+
+| Tier | Max Power | Power regen / turn | Max Shields |
+|---|---|---|---|
+| 1 | 6 | +2 | 6 |
+| 2 | 8 | +3 | 8 |
+| 3 | 10 | +4 | 10 |
+| 4 | 12 | +5 | 12 |
 
 ### Engine (Veil Drive) — *Speed* (Navigator)
 
@@ -200,11 +235,13 @@ mounts and bigger finishes.
 | 1 | 1 | **Killing Blow / Suppressing Volley** (base). |
 | 2 | 2 | **Autoloader** — Killing Blow +1/link. |
 | 3 | 2 | **Point-Defense Net** — Point Defense intercepts +1. |
-| 4 | 3 | **Spinal Overload** — once per battle, a Killing Blow that auto-Breaches and can't be braced below 1 damage. |
+| 4 | 3 | **Spinal Overload** — once per battle, a Killing Blow that auto-Breaches and can't be reduced below 1 damage by a Reaction. |
 
-*Weapon types* (mount into Weaponry slots): **Pulse** (Balanced, 1 Power) ·
-**Beam** (Laser, 2) · **Torpedo** (Missile, 2) · **Lance** (AP, 3) · **Flak**
-(utility, +Point Defense, 1).
+*Munitions* (mount into Weaponry slots): **Pulse** (1d8, 1 Power) · **Beam**
+(1d6, ×2 vs shields, 2) · **Torpedo** (Missile 2d6, ×½ shields / ×2 hull, 2) ·
+**Flak** (utility, +Point Defense, 1). The **Lance (AP/Breach)** is *not* mounted
+— it's a targeting effect delivered through chain abilities (Reactor Lance,
+Killbox, Sensor lock).
 
 ### Optics — *intel & electronic warfare* (Sensor)
 
@@ -301,14 +338,15 @@ fight changes.**
 - **Class:** Cutter (Light, 3–5 crew, 4 slots, +1 Utility).
 - **Required modules:** Hull T2 (HP 22, AC 11, Medium) · Bridge T1 · Reactor T2
   (Shields 8, Power 8) · Engine T2 (Speed 4).
-- **Slots:** Weaponry T2 (mounts Pulse + Lance) · Optics T2 (Targeting Array) ·
+- **Slots:** Weaponry T2 (mounts Pulse + Beam) · Optics T2 (Targeting Array) ·
   Cargo T1 · Utility: Repair Drones.
-- **Power check:** Reactor budget 8; running Weaponry (Pulse 1 + Lance 3 = 4) +
-  Optics (1) + Utility (1) = 6 ≤ 8. Legal, with headroom for the Engineer to
+- **Power check:** Reactor budget 8; running Weaponry (Pulse 1 + Beam 2 = 3) +
+  Optics (1) + Utility (1) = 5 ≤ 8. Legal, with headroom for the Engineer to
   Overcharge mid-fight.
 
-The result: a balanced explorer whose Sensor (Targeting Array) sets up a Gunner
-Lance, kept alive by a solid Reactor and passive Repair Drones — and every officer
+The result: a balanced explorer whose Sensor (Targeting Array) sets up the Gunner's
+shot — and, when the chain calls for it, the Engineer's Reactor **Lance** to crack
+shields — kept alive by a solid Reactor and passive Repair Drones. Every officer
 has an obvious next upgrade to chase (Bridge is lagging at T1; the Commander wants
 a core).
 
@@ -330,8 +368,8 @@ a core).
 ## 14. Open questions
 
 - **Roll-stack ceiling** — `Crew Tier + Module Tier + chain` can reach `+9`–`+11`
-  at high end; do enemy TNs scale to match (Tier 4 TN ~15), or does the stack
-  outrun the d20 and make high-Tier crews near-auto-hit? May need TN growth or a
+  at high end; do enemy ACs scale to match (Tier 4 AC ~15), or does the stack
+  outrun the d20 and make high-Tier crews near-auto-hit? May need AC growth or a
   cap on stacked chain bonuses.
 - **Power as build-only vs live dial** — keep the Engineer's in-combat Power
   reallocation, or simplify Power to a build-time check?

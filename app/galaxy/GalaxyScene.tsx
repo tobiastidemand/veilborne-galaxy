@@ -13,11 +13,11 @@ import {
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 
-import { JUMP_LANES, SYSTEMS, systemById } from "./data";
+import { SYSTEMS, systemById } from "./data";
 import { MotionContext } from "./useReducedMotion";
+import { partyBodyName, partySystem } from "./useCampaign";
 import { useCameraFly } from "./useCameraFly";
 import { NebulaGlow, StarfieldExtra } from "./scene/Background";
-import { JumpLane } from "./scene/JumpLane";
 import { StarSystem } from "./scene/StarSystem";
 
 const IDLE_RESUME_MS = 5000;
@@ -90,16 +90,6 @@ export default function GalaxyScene({
     }
   });
 
-  const lanes = useMemo(
-    () =>
-      JUMP_LANES.map(([a, b]) => ({
-        from: systemById(a),
-        to: systemById(b),
-        key: `${a}->${b}`,
-      })),
-    []
-  );
-
   const caOffset = useMemo(() => new THREE.Vector2(0.0006, 0.0006), []);
 
   // The party's travelled route, through systems they've actually visited.
@@ -129,10 +119,6 @@ export default function GalaxyScene({
       <StarfieldExtra />
       <NebulaGlow />
 
-      {lanes.map((lane) => (
-        <JumpLane key={lane.key} from={lane.from} to={lane.to} />
-      ))}
-
       {/* the party's travelled route */}
       {trailPoints.length >= 2 && (
         <Line
@@ -152,7 +138,10 @@ export default function GalaxyScene({
           focused={focusSystemId === system.id}
           selectedPlanet={selectedPlanet}
           discovered={discovered.has(system.id)}
-          isParty={party === system.id}
+          isParty={partySystem(party) === system.id}
+          partyBody={
+            partySystem(party) === system.id ? partyBodyName(party) : null
+          }
           dmMode={dmMode}
           onSelectSystem={onSelectSystem}
           onSelectPlanet={onSelectPlanet}

@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Veilborn Galaxy — Setting &amp; Campaign Book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Cinzel+Decorative:wght@700;900&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2b2419; --muted:#6f6448; --page:#f6efde; --page-edge:#e9dcc0;
+    --gold:#9a7b2e; --gold-bright:#c8a24a; --ox:#6a2c2c; --indigo:#3a3a72;
+    --teal:#2f6b66; --gm-bg:#efe2c6; --gm-ink:#33271c;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; color:var(--ink);
+    font-family:"EB Garamond",Georgia,"Times New Roman",serif;
+    font-size:19px; line-height:1.65;
+    background:#0a0c14;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.5), transparent),
+      radial-gradient(1px 1px at 70% 60%, rgba(255,255,255,.35), transparent),
+      radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,.3), transparent),
+      radial-gradient(1200px 700px at 50% -10%, #161a2b, #0a0c14 70%);
+    background-attachment:fixed;
+  }
+  .page{
+    max-width:820px; margin:40px auto; background:var(--page);
+    border:1px solid var(--page-edge);
+    box-shadow:0 18px 50px rgba(0,0,0,.55);
+    padding:64px 72px; border-radius:3px;
+    position:relative;
+  }
+  .page::after{ /* subtle inner frame */
+    content:""; position:absolute; inset:14px; border:1px solid rgba(154,123,46,.22);
+    pointer-events:none; border-radius:2px;
+  }
+  h1,h2,h3,h4{font-family:"Cinzel",Georgia,serif; color:var(--ox); line-height:1.2; font-weight:700;}
+  h2{font-size:30px; margin:0 0 6px; border-bottom:2px solid var(--gold); padding-bottom:8px;}
+  h3{font-size:22px; color:#7a3636; margin:32px 0 8px;}
+  h4{font-size:18px; color:var(--gold); letter-spacing:.04em; margin:26px 0 6px; text-transform:uppercase;}
+  .kicker{font-family:"Cinzel",serif; letter-spacing:.22em; text-transform:uppercase;
+    font-size:13px; color:var(--gold); margin:0 0 4px;}
+  a{color:var(--ox);}
+  p{margin:0 0 14px;}
+  hr{border:none; border-top:1px solid rgba(154,123,46,.35); margin:26px 0;}
+  ul{margin:0 0 14px; padding-left:1.2em;}
+  li{margin:4px 0;}
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:17px;}
+  th,td{border:1px solid rgba(106,44,44,.25); padding:7px 11px; text-align:left; vertical-align:top;}
+  th{background:rgba(106,44,44,.10); font-family:"Cinzel",serif; font-size:13px; letter-spacing:.04em;}
+  .lead::first-letter{
+    font-family:"Cinzel Decorative",serif; font-size:62px; line-height:.8; float:left;
+    color:var(--ox); padding:6px 10px 0 0;
+  }
+
+  /* ---- COVER ---- */
+  .cover{
+    min-height:88vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; background:radial-gradient(900px 600px at 50% 38%, #1b2034, #0c0e18 75%);
+    border:1px solid #20263c; color:#efe6cf;
+  }
+  .cover::after{display:none;}
+  .cover .serpent{font-size:54px; color:var(--gold-bright); margin-bottom:18px; filter:drop-shadow(0 0 14px rgba(200,162,74,.4));}
+  .cover h1{font-family:"Cinzel Decorative",serif; font-size:58px; color:#f0e2b8;
+    margin:0; letter-spacing:.03em; text-shadow:0 2px 30px rgba(200,162,74,.35);}
+  .cover .sub{font-family:"Cinzel",serif; letter-spacing:.16em; text-transform:uppercase;
+    color:#c9b98c; font-size:15px; margin:18px 0 28px;}
+  .cover .tag{font-style:italic; color:#cdbfa0; font-size:20px; max-width:30ch;}
+  .cover .ed{margin-top:40px; font-family:"Cinzel",serif; letter-spacing:.2em; font-size:13px; color:#8e7f5d;}
+  .cover .rule{width:120px; height:1px; background:linear-gradient(90deg,transparent,var(--gold),transparent); margin:22px 0;}
+
+  /* ---- CALLOUTS ---- */
+  .readaloud{font-style:italic; background:#efe7d2; border-left:4px solid var(--indigo);
+    padding:14px 18px; margin:18px 0; color:#3b3550;}
+  .readaloud .src{display:block; font-style:normal; text-align:right; color:var(--muted); font-size:15px; margin-top:6px;}
+  .gm{background:#2a1616; color:#ecd9bd; border:1px solid var(--gold); border-radius:3px;
+    padding:14px 18px; margin:18px 0;}
+  .gm .label{font-family:"Cinzel",serif; color:var(--gold-bright); letter-spacing:.14em;
+    text-transform:uppercase; font-size:13px; display:block; margin-bottom:5px;}
+  .gm a{color:#e7c97f;}
+  .tnote{background:#e7eee9; border-left:4px solid var(--teal); padding:12px 16px; margin:18px 0;}
+  .tnote .label{font-family:"Cinzel",serif; color:var(--teal); letter-spacing:.1em; text-transform:uppercase; font-size:12px; display:block; margin-bottom:4px;}
+  .sidebar{background:#ece0c0; border:1px solid #cdbb8a; border-radius:3px; padding:14px 18px; margin:18px 0;}
+  .sidebar .label{font-family:"Cinzel",serif; color:var(--gold); letter-spacing:.1em; text-transform:uppercase; font-size:12px; display:block; margin-bottom:4px;}
+  .art{border:2px dashed #bca871; color:#8a7c57; font-style:italic; text-align:center;
+    padding:18px; margin:20px 0; border-radius:3px; background:rgba(188,168,113,.07);}
+
+  /* ---- PART DIVIDERS ---- */
+  .part{
+    max-width:820px; margin:40px auto; text-align:center; color:#f0e2b8;
+    background:radial-gradient(700px 300px at 50% 50%, #1a1f33, #0c0e18);
+    border:1px solid #20263c; padding:70px 40px; border-radius:3px;
+    box-shadow:0 18px 50px rgba(0,0,0,.5);
+  }
+  .part .pk{font-family:"Cinzel",serif; letter-spacing:.32em; color:var(--gold-bright); font-size:14px;}
+  .part h1{font-family:"Cinzel Decorative",serif; font-size:42px; color:#f0e2b8; margin:14px 0 0;}
+  .part .pd{color:#bdae8c; font-style:italic; margin-top:14px;}
+  .part.gm-div{background:radial-gradient(700px 300px at 50% 50%, #2a1414, #120a0a); border-color:#5c2626;}
+  .part.gm-div .pk, .part.gm-div h1{color:#e8b86a;}
+
+  /* GM section pages get a warm-warning tint + red edge */
+  .gm-section{background:var(--gm-bg); border-left:5px solid var(--ox);}
+  .gm-section h2{color:#7a2b2b;}
+
+  .toc a{display:block; padding:3px 0; text-decoration:none; border-bottom:1px dotted rgba(106,44,44,.25);}
+  .toc a:hover{color:var(--gold);}
+  .toc .pt{font-family:"Cinzel",serif; color:var(--gold); letter-spacing:.08em; margin-top:18px; font-size:14px; text-transform:uppercase;}
+  .center{text-align:center;}
+  .small{font-size:16px; color:var(--muted);}
+  .backtotop{display:block; text-align:center; margin:20px 0 0; font-size:14px; color:var(--muted); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<!-- ===== COVER ===== -->
+<section class="page cover" id="top">
+  <div class="serpent">⟡ ◆ ⟡</div>
+  <div class="art" style="border-color:#33405e;color:#7f8db0;background:rgba(40,52,84,.2);width:80%;">[ FULL-BLEED COVER ART — a lone ship at the lip of a black hole, the galaxy's spiral light bending into the dark ]</div>
+  <h1>THE&nbsp;VEILBORN&nbsp;GALAXY</h1>
+  <div class="rule"></div>
+  <div class="sub">A System-Agnostic Space-Fantasy Campaign Setting</div>
+  <div class="tag">Chart the dark. Fly the impossible. Learn what the stars are really for.</div>
+  <div class="ed">PLAYTEST DRAFT · v0.1</div>
+</section>
+
+<!-- ===== COLOPHON / HOW TO USE ===== -->
+<section class="page">
+  <p class="center small"><em>The Veilborn Galaxy — Setting &amp; Campaign Book</em><br>
+  Design &amp; worldbuilding: <strong>T. Tidemand</strong><br>
+  Built with most modern tabletop rulesets in mind.<br>
+  <em>A living document. Names, systems, and the metaplot are in active development.</em></p>
+  <hr>
+  <h2>How to use this book</h2>
+  <p>The Veilborn is built to be played <strong>two ways</strong>:</p>
+  <ul>
+    <li><strong>Run it as written.</strong> A ready galaxy — eight systems, living factions, and a slow apocalypse already ticking. Drop your crew in and go.</li>
+    <li><strong>Build your own.</strong> Treat every faction, world, and mystery as a <strong>module</strong> with clear seams. Keep what you like, reskin the rest, and use the toolkit (the <em>Forge</em>) to grow your own dark between the stars.</li>
+  </ul>
+  <p>This book uses no system-specific math. Lore and exploration carry the story; the two signature subsystems — <strong>Exploration &amp; Cartography</strong> and <strong>Ship Combat &amp; Building</strong> — plug into your table's own rules with short conversion notes <em>(in development)</em>.</p>
+  <div class="gm"><span class="label">🔒 A warning before you read on</span>
+  <strong>Part IV is for the Gamemaster only.</strong> The Veilborn has a public face and a hidden truth, and the campaign lives in the gap between them. Players: stop at the end of Part III. GMs: the real book starts at Part IV.</div>
+</section>
+
+<!-- ===== CONTENTS ===== -->
+<section class="page">
+  <p class="kicker">Contents</p>
+  <h2>What's in this book</h2>
+  <div class="toc">
+    <div class="pt">Part I — The Galaxy <span class="small">(player-facing)</span></div>
+    <a href="#c1">1 · Welcome to the Veilborn</a>
+    <a href="#c2">2 · The Veil &amp; the Veilspinner</a>
+    <a href="#c3">3 · Magic</a>
+    <a href="#c4">4 · The Charted Map</a>
+    <div class="pt">Part II — Powers of the Veilborn <span class="small">(player-facing)</span></div>
+    <a href="#c5">5 · The Aureate Chain</a>
+    <a href="#c6">6 · The Arcane Survey</a>
+    <a href="#c7">7 · The Faith of the Stargiver</a>
+    <div class="pt">Part III — The Systems <span class="small">(gazetteer)</span></div>
+    <a href="#c8">8 · Solara Prime</a>
+    <a href="#c9">9 · The Charted Eight</a>
+    <div class="pt">Part IV — The Hidden Truth <span class="small">(🔒 GM only)</span></div>
+    <a href="#c10">10 · The Star-Mother &amp; the Hungry Void</a>
+    <a href="#c11">11 · The First People</a>
+    <a href="#c12">12 · The Stargiver</a>
+    <a href="#c13">13 · The Silver Coil &amp; the Vesh'kaar</a>
+    <a href="#c14">14 · The True Faces</a>
+    <a href="#c15">15 · Running the Reckoning</a>
+    <div class="pt">Appendices</div>
+    <a href="#appA">A · Master Chronology</a>
+    <a href="#appB">B · Dramatis Personae</a>
+  </div>
+</section>
+
+<!-- ===== PART I DIVIDER ===== -->
+<section class="part">
+  <div class="pk">Part I</div>
+  <h1>The Galaxy</h1>
+  <div class="pd">The spiral of the Veilborn — eight systems pinned in light against the dark.</div>
+</section>
+
+<section class="page" id="c1">
+  <p class="kicker">Chapter One</p>
+  <h2>Welcome to the Veilborn</h2>
+  <div class="readaloud">❝ You were born under a sun. So was everyone you've ever loved. Out here, between them, is the dark we don't talk about — the dark the engines drink, the dark the mystics borrow from, the dark with a shape at the far edge of every chart that no captain will name aloud. We call it the Veil. We do not ask what's behind it. ❞
+  <span class="src">— a Charterhand's first lesson</span></div>
+  <p class="lead">The <strong>Veilborn Galaxy</strong> is a place of gorgeous, dangerous distances: gleaming trade-cities and temple-foundries, alien beasts and uncharted deeps, dogfights in the black and quiet horrors at the rim. It runs on one strange fact — that everything, everywhere, floats on an ocean of <strong>eternal darkness</strong> — and on one great lie that nobody alive remembers telling.</p>
+  <p>This book gives you the galaxy as its people understand it. What's <em>actually</em> true is the GM's to reveal.</p>
+</section>
+
+<section class="page" id="c2">
+  <p class="kicker">Chapter Two</p>
+  <h2>The Veil &amp; the Veilspinner</h2>
+  <p class="lead">The <strong>Veil</strong> is the eternal darkness that surrounds everything — the void between and behind the stars. It is not empty: <strong>behind it lies something incomprehensible.</strong> The Veil is the wellspring of magic, of travel, and of <em>the weird.</em></p>
+  <ul>
+    <li><strong>The Veilspinner</strong> — the arcane engine in every ship. It <strong>spins fragments of the Veil into reality</strong> to fuel flight and warp travel.</li>
+    <li><strong>Warp Skip</strong> — to cross between systems, a ship <strong>slips through the Veil</strong> to a set of coordinates and re-emerges elsewhere. Deeply <strong>power-hungry</strong>; never casual. Whoever controls the charts and the fuel controls the galaxy.</li>
+  </ul>
+  <div class="sidebar"><span class="label">📦 Sidebar · Why the map matters</span>
+  Skip-coordinates are property; aether is a commodity; the dark is lethal to the unprepared. To explore is to gamble — or to pay the Chain. Charting the unknown is the campaign's core loop: <em>chart → meet the unknown → risk → reward &amp; revelation → the map (and the danger) grows.</em></div>
+</section>
+
+<section class="page" id="c3">
+  <p class="kicker">Chapter Three</p>
+  <h2>Magic</h2>
+  <p class="lead">Magic in the Veilborn is <strong>mysteriously fuelled by the Veil</strong>, and kept deliberately <strong>ambiguous</strong> so it rides atop <em>any</em> tabletop's magic rules. Casters draw on the Veil; your table's own system says how it works. Where the power <em>comes from</em> — and what it costs at the cosmic scale — is a question almost no one thinks to ask.</p>
+  <div class="gm"><span class="label">🔒 GM's Eyes Only</span>
+  What the galaxy does <strong>not</strong> know: what the Veil really hides, what the stars truly are, or what the dark thing at the map's edge is calling for. All of that is <strong>Part IV.</strong></div>
+</section>
+
+<section class="page" id="c4">
+  <p class="kicker">Chapter Four</p>
+  <h2>The Charted Map</h2>
+  <p>Eight systems are charted and named. Most folk live and die within a handful of them; the rest are rumor, danger, and prize. <em>(Full gazetteer: Part III.)</em></p>
+  <table>
+    <tr><th>System</th><th>Reputation</th></tr>
+    <tr><td><strong>Solara Prime</strong></td><td>The bright heart — seat of the City of Pearls.</td></tr>
+    <tr><td><strong>Twin Embers</strong></td><td>The workshop of the galaxy; industry, commerce, and the great Faith.</td></tr>
+    <tr><td><strong>Azuran Deep</strong></td><td>____</td></tr>
+    <tr><td><strong>Crimson Maw</strong></td><td>A place ships don't come back from.</td></tr>
+    <tr><td><strong>Pale Cipher</strong></td><td>____</td></tr>
+    <tr><td><strong>The Great Lighthouse</strong></td><td>____</td></tr>
+    <tr><td><strong>The Devourer</strong></td><td>The black hole at the edge. Charts mark it; no one goes.</td></tr>
+    <tr><td><strong>The Voidmother</strong></td><td>Forbidden ground — the martyr's grave (see Ch. 7).</td></tr>
+    <tr><td><strong>The Sable Reach</strong></td><td>The frontier — a dim ember beyond the Voidmother, barely surveyed.</td></tr>
+    <tr><td><strong>The Outer Dark</strong></td><td>The furthest mark on any chart; never sailed to.</td></tr>
+  </table>
+  <div class="art">🎨 [ Full-page galaxy map ]</div>
+</section>
+
+<!-- ===== PART II DIVIDER ===== -->
+<section class="part">
+  <div class="pk">Part II</div>
+  <h1>Powers of the Veilborn</h1>
+  <div class="pd">❝ Three powers run the lit galaxy: the ones who sell you the road, the ones who drew it, and the ones who pray over it. ❞</div>
+</section>
+
+<section class="page" id="c5">
+  <p class="kicker">Chapter Five · The Aureate Chain</p>
+  <h2>The Trade Hegemon</h2>
+  <p class="lead">To most of the Veilborn, the <strong>Aureate Chain</strong> simply <em>is</em> civilisation — <em>"and civilisation has a price the Chain sets."</em> It is the galaxy-spanning chartered trade power, seated at the <strong>City of Pearls</strong> (Solara Prime), with its heartland in <strong>Twin Embers</strong>.</p>
+  <p><strong>Its true power is the means of travel.</strong> Warp Skip is power-hungry and the void is lethal, so whoever controls <strong>charts and fuel</strong> controls everything:</p>
+  <ul>
+    <li><strong>The Charts.</strong> The Survey maps; the Chain <em>licenses</em> the maps. Fly uncharted, gamble your ship.</li>
+    <li><strong>The Fuel.</strong> Refined <strong>aether</strong> flows through Chain depots. Cut off, you don't fly.</li>
+  </ul>
+  <p>This makes the Chain the natural <strong>patron <em>and</em> antagonist</strong> of any crew that wants to explore. <em>You can go anywhere in the galaxy — as long as the Chain sells you the map and the fuel to get there.</em></p>
+  <h4>Structure</h4>
+  <p><strong>Chain-Lords</strong> (regional sovereigns) · <strong>Counting Houses</strong> (the bureaucracy) · the <strong>Ironbound</strong> (the "we have no military" military) · <strong>Factors</strong> (agents and fixers) · <strong>Charterhands</strong> (chartered captains — <em>where most crews sit</em>).</p>
+  <h4>Leadership</h4>
+  <ul>
+    <li><strong>Chain-Lord Lotus Silverblood</strong> <em>(City of Pearls)</em> — the honest public sovereign; he believes the Chain is exactly what it appears.</li>
+    <li><strong>Chain-Lady Mirreth</strong> <em>(the Ironbound, Twin Embers)</em> — the iron fist of the Twins; commands the fleets and the foundries.</li>
+  </ul>
+  <div class="tnote"><span class="label">🛠️ At the Table</span>
+  Most crews owe the Chain money, charters, or both. It's the hand that feeds and the hand that squeezes. <span class="small">🔒 What the Chain really is: Part IV, Ch. 14.</span></div>
+</section>
+
+<section class="page" id="c6">
+  <p class="kicker">Chapter Six · The Arcane Survey</p>
+  <h2>Cartographers &amp; Keepers of Knowledge</h2>
+  <p class="lead">If the Chain sells the road, the <strong>Arcane Survey</strong> <em>drew</em> it. Born as Twin Embers scholars and cartographers, it is now the galaxy's <strong>mapping authority</strong> and its great <strong>library</strong> — of systems, worlds, and moons, and sometimes of secrets and politics better left unfiled.</p>
+  <ul>
+    <li><strong>Clearance</strong> runs <strong>Tier 1–5</strong>; the deepest vaults (<strong>Tier 5</strong>) hold what the public must never read.</li>
+    <li><strong>Stations</strong> stand in the safe systems; a few sit <strong>abandoned</strong> at the galaxy's feared edges; none at all in the Crimson Maw.</li>
+  </ul>
+  <p>The Survey is the crew's likeliest source of leads, lore, and licensed exploration work — and a place where curiosity has a way of becoming dangerous.</p>
+  <div class="gm"><span class="label">🔒 GM's Eyes Only</span>
+  The Survey has a corruption, a hidden cell, and a buried mystery. Part IV, Ch. 14.</div>
+</section>
+
+<section class="page" id="c7">
+  <p class="kicker">Chapter Seven · The Faith of the Stargiver</p>
+  <h2>The Great Religion</h2>
+  <p>The dominant religion of the Veilborn, and on Twin Embers the state, the guild, and the soul of the economy at once.</p>
+  <div class="readaloud">❝ He came down from the dark and gave us the stars. Then he died to keep a horror from being born. Grieve him — and never sail where he forbade. ❞
+  <span class="src">— common catechism</span></div>
+  <p><strong>What the faithful believe.</strong> Roughly three and a half centuries ago an <strong>alien</strong> descended on Twin Embers — then a Renaissance world — and in <strong>69 years</strong> lifted it to the computer age and the stars. He is the <strong>Stargiver</strong>, the messiah who gave humanity the heavens. Then, the faithful hold, he <strong>gave his life</strong> to stop a cosmic horror, and ascended into legend. Theirs is a <strong>genuine, joyful, grieving, beloved faith.</strong></p>
+  <p><strong>The silver serpent.</strong> The faith's symbol — a coiled or descending silver serpent, worn as a <strong>pendant</strong> at the throat of dockworkers and Chain-Lords alike, etched over foundry doors, pressed into coins across the Veilborn.</p>
+  <p><strong>The clergy.</strong> Lampbearers (parish) → Foundry-Fathers &amp; Mothers (the temple-foundries) → Radiants (regional) → <strong>the First Light</strong> (the church's supreme, sincere head).</p>
+  <p><strong>Holy days.</strong> The <strong>Coming</strong> (his descent); the <strong>Quickening</strong> (the 69-year uplift — a festival season of invention and light); the <strong>Ascension</strong> (the solemn day of mourning, when the <strong>Last Transmission</strong> is read and his final command renewed).</p>
+  <p><strong>The prohibition.</strong> His dying word forbade the faithful to follow him to the <strong>Voidmother</strong>. To this day, ordinary folk shun that system as holy ground and a grave; pilots pray not to drift toward it. To sail there is not merely dangerous — it is <strong>heresy against the martyr's wish.</strong></p>
+  <div class="gm"><span class="label">🔒 GM's Eyes Only</span>
+  Every word of the founding story is a lie, and the prohibition is a crime scene sealed with the love of a galaxy. See Part IV, Ch. 12 &amp; 14.</div>
+</section>
+
+<!-- ===== PART III DIVIDER ===== -->
+<section class="part">
+  <div class="pk">Part III</div>
+  <h1>The Systems</h1>
+  <div class="pd">A gazetteer in progress — Solara Prime is authored first; the rest are named and queued.</div>
+</section>
+
+<section class="page" id="c8">
+  <p class="kicker">Chapter Eight</p>
+  <h2>Solara Prime <span class="small">(in progress)</span></h2>
+  <p class="lead">The bright heart of the charted galaxy, and the seat of the <strong>City of Pearls</strong>.</p>
+  <ul>
+    <li><strong>Aethon</strong> · <strong>Verdania</strong> · <strong>Caelum</strong> <em>(the cloud-world the City of Pearls floats in)</em> · <strong>Glacius</strong> · <strong>The Star Garden</strong> · <strong>Motel Prime</strong> · <strong>The Cartographer</strong></li>
+  </ul>
+  <div class="gm"><span class="label">🔒 GM's Eyes Only</span>
+  The City of Pearls is built on the stolen Hearthstone. Part IV.</div>
+</section>
+
+<section class="page" id="c9">
+  <p class="kicker">Chapter Nine</p>
+  <h2>The Charted Eight <span class="small">(names locked; lore to come)</span></h2>
+  <table>
+    <tr><th>System</th><th>Worlds &amp; bodies</th></tr>
+    <tr><td><strong>Solara Prime</strong></td><td>Aethon · Verdania · Caelum · Glacius · The Star Garden · Motel Prime · The Cartographer</td></tr>
+    <tr><td><strong>Crimson Maw</strong></td><td>Ashveil · The Wound · Char Moons I–IV</td></tr>
+    <tr><td><strong>Azuran Deep</strong></td><td>Ionara · Stillwater · Cobalt Station · The Mirror</td></tr>
+    <tr><td><strong>Pale Cipher</strong></td><td>Ashen Relic · Luminos · Vex Minor · The Ossuary</td></tr>
+    <tr><td><strong>The Devourer</strong> <em>(VB-005)</em></td><td>Event Fragment · The Chorus</td></tr>
+    <tr><td><strong>The Great Lighthouse</strong></td><td>Rhythm · Dead Note · The Beacon</td></tr>
+    <tr><td><strong>Twin Embers</strong></td><td>Ember's Rest · Twinreach · Vanthis · King Casabian · Wellspring</td></tr>
+    <tr><td><strong>The Voidmother</strong> <em>(VB-008)</em></td><td>Hereafter · The Loom · Cradle of Ending · Null</td></tr>
+    <tr><td><strong>The Sable Reach</strong> <em>(VB-009)</em></td><td>Greythorne · <em>(mostly uncharted)</em></td></tr>
+    <tr><td><strong>The Outer Dark</strong> <em>(VB-010)</em></td><td><em>(uncharted)</em></td></tr>
+  </table>
+  <a class="backtotop" href="#top">▲ back to top</a>
+</section>
+
+<!-- ===== PART IV DIVIDER (GM) ===== -->
+<section class="part gm-div">
+  <div class="pk">Part IV · 🔒 Gamemaster Only</div>
+  <h1>The Hidden Truth</h1>
+  <div class="pd">Stop here if you are a player. What follows is the secret the whole galaxy is built on top of without knowing — deliver it like a thunderclap.</div>
+</section>
+
+<section class="page gm-section" id="c10">
+  <p class="kicker">Chapter Ten</p>
+  <h2>The Star-Mother &amp; the Hungry Void</h2>
+  <p class="lead"><strong>The Voidmother is not a monster. She is where the light comes from.</strong> The being the galaxy fears is a <strong>star-mother</strong> — a cosmic entity whose nature is the <em>creation of suns</em>. She carries each new star from a <strong>gestating egg</strong> to a burning body, guided every step by her own <strong>arcane resonance</strong>.</p>
+  <div class="sidebar"><span class="label">The central truth</span>
+  A child guided in her resonance becomes <strong>a star.</strong> A child that hatches <em>without</em> her becomes its inversion — light turned inside out, a sun that consumes instead of gives: <strong>a black hole.</strong></div>
+  <p><strong>The Hearthstone.</strong> Her gestating eggs are called <strong>Hearthstones</strong> — a star's heart in its cradle, held in her <strong>womb</strong> (her region of resonance). A Hearthstone is a thing of miracles: <strong>limitless power</strong>, and a force that <strong>remakes matter, heals any wound, cures any sickness, and reverses ageing.</strong> Ripened in her resonance it becomes a sun. Torn out and drained, it <strong>curdles</strong> — and, in time, hatches into a <strong>Devourer.</strong></p>
+  <p><strong>The Devourer</strong> <em>(VB-005)</em>, then, is no accident of the cosmos. It is a <strong>stolen star-heart, drained and abandoned until it curdled</strong> — and the star-mother <em>knows</em> the black hole at the galaxy's edge is her stolen child. She has grieved it across an age, dormant in her region <strong>(VB-008)</strong>.</p>
+  <div class="gm"><span class="label">📦 The Chorus</span>
+  The Devourer's thousands of voices — everything it has consumed — all say one word, each heard in its own tongue: <strong><em>please.</em></strong> A sun's worth of yearning, calling for the only force that could have made it whole.</div>
+</section>
+
+<section class="page gm-section" id="c11">
+  <p class="kicker">Chapter Eleven</p>
+  <h2>The First People <span class="small">(the Keth'aal)</span></h2>
+  <p class="lead">Long before Twin Embers lit its first lamp, the galaxy's first great civilisation was the <strong>Keth'aal</strong>: a <strong>silver-scaled, reptilian, deeply psionic</strong> people, <strong>200–250 years to a life</strong>, who thought in deep time. Their oldest scripture was the <strong>finding of the star-mother</strong> — and that worship curdled into theft.</p>
+  <p>They breached her womb and took a Hearthstone. For <strong>millennia</strong> they ran a golden age on a stolen star-heart and its miracles, hiding it from its mother — until it <strong>curdled.</strong> One ultra-rich house, the <strong>Aurun Line</strong>, foresaw the end and <strong>fled with a fleet of riches</strong>; the rest stayed and were <strong>swallowed</strong> as the Hearthstone hatched into the <strong>Devourer</strong> that ate their homeworld, <strong>Sael'aan</strong> — <em>"the silver cradle."</em></p>
+  <div class="sidebar"><span class="label">Their sin in one line</span>
+  <em>They found god, bled her child for an age to light their empire, and forged the hunger that devoured them.</em></div>
+  <p><strong>The public face.</strong> The galaxy knows them only as <em>"the First People"</em> — a vanished precursor race of silver ruins and psionic relics the Survey covets. <strong>No one connects them to the Devourer.</strong> A romantic archaeological mystery — not the answer to the cosmic horror at the edge of the map.</p>
+</section>
+
+<section class="page gm-section" id="c12">
+  <p class="kicker">Chapter Twelve</p>
+  <h2>The Stargiver <span class="small">(Iss'reth Aurun)</span></h2>
+  <p class="lead">The last living Keth'aal, sole scion of the <strong>Aurun Line</strong>, and the <strong>central antagonist</strong> — the immortal who built the modern galaxy, hid its original sin, and is quietly steering it toward a second.</p>
+  <table>
+    <tr><th>Face</th><th>Who holds it</th><th>What they see</th></tr>
+    <tr><td><strong>The martyred saviour</strong></td><td>the galaxy / the Faith 🔓</td><td>The alien who gave the stars, then died a martyr — mourned every Ascension.</td></tr>
+    <tr><td><strong>The living guide</strong></td><td>the Silver Coil 🔒</td><td>He <em>still lives</em>, and directs them. They kill to keep it secret.</td></tr>
+    <tr><td><strong>Iss'reth Aurun</strong></td><td>him alone 🔒</td><td>The Keth'aal who stole a star, murdered to keep it, and means to master what killed his world.</td></tr>
+  </table>
+  <p><strong>The charming predator.</strong> Magnetic, gracious, genuinely brilliant — the most likeable person in any room, and he made the room. The uplift of Twin Embers was <em>real</em>, but the good was always <strong>instrumental</strong>: it bought him the Chain, the Survey, an industrial base, and adoration. He treats people as pieces, and delights in the long game.</p>
+  <p><strong>The fatal certainty.</strong> He <strong>knows</strong> his second stolen Hearthstone is curdling toward a new Devourer — and is serenely sure he will <strong>master it</strong> where his "careless" ancestors failed. His blind spot: <em>only the star-mother's resonance can ripen an egg; there is no substitute.</em> He is Sael'aan happening again, narrated by a man certain it's a different story.</p>
+  <p><strong>The hidden leash.</strong> The Hearthstone made him deathless, but he must periodically return to its resonance (the City of Pearls) or the lost centuries catch him. This roots him, gives a clock — and seals the central trap: <strong>the only way to stop the Devourer is to return the stone to its mother, which kills him.</strong> His life and the galaxy's doom are the same object.</p>
+  <div class="gm"><span class="label">The Ascension — the founding lie</span>
+  At 222 YA he led the Survey's best to the womb, <strong>murdered them all</strong>, took the Hearthstone, and broadcast the <strong>Last Transmission</strong> — recasting the massacre as heroic martyrdom (<em>"we died stopping a cosmic horror; never go to the Voidmother"</em>). So he "died," ascended to legend, and vanished into hidden rule before anyone could mark that he no longer ages. <strong>He didn't stop a cosmic horror — he stole the seed of one. The martyrs are his victims.</strong></div>
+  <div class="tnote"><span class="label">🛠️ At the Table</span>
+  Meet him before you know him — a charming benefactor in disguise. His defeat <em>is</em> his death, which he'll never accept, so he can't be reasoned into surrender, only out-maneuvered. The one place his composure fails: the <strong>Devourer</strong>, where the Chorus carries his own people, still saying <em>please.</em></div>
+</section>
+
+<section class="page gm-section" id="c13">
+  <p class="kicker">Chapter Thirteen</p>
+  <h2>The Silver Coil &amp; the Vesh'kaar</h2>
+  <p class="lead">Beneath the beloved public faith runs the <strong>Silver Coil</strong> — the Stargiver's cult of assassins, named for the serpent: the coil you never see, wound through everything. Most of the faithful never know it exists.</p>
+  <p><strong>What it guards.</strong> The Coil's secret is that the Stargiver <strong>still lives.</strong> What it does <em>not</em> know is that, in hiding his survival, it hides <strong>something far worse</strong> — the theft and slow collapse of an unborn star. The cult guards an apocalypse it cannot comprehend.</p>
+  <p><strong>Structure.</strong> The Faithful → the Called → the <strong>Coiled</strong> (sworn agents) → the <strong>Vesh'kaar</strong> (the seven) → the Stargiver.</p>
+  <h3>The Vesh'kaar — the Seven Fangs</h3>
+  <p>The Stargiver's seven master assassins, ranked <strong>1–7</strong> — <em>Vesh'kaar</em> is his own dead tongue: <strong>"the Fangs."</strong> Each is unique; together they form an escalating ladder (the crew meets the higher numbers first, the <strong>First</strong> last). Every Vesh knows the Stargiver lives and that his power flows from a <strong>relic of "veil-magic"</strong> — but no more than that.</p>
+  <ul>
+    <li><strong>Vesh #1 — <em>the First.</em></strong> Leader, spymaster, deadliest. A <strong>faceless spider</strong> with no name or face, existing only as <strong>personas</strong> the crew may already trust. Master of combat, subterfuge, and infiltration alike; armed with the Chain's best tech via #4. <strong>Bound by debt and love</strong> to the Stargiver, who found him ruined and remade him — the one human thing left in him is devotion to a monster. <em>Crack:</em> a "tell" that persists across all his faces.</li>
+    <li><strong>Vesh #4 — <em>Chain-Lady Mirreth.</em></strong> The most public Fang: the <strong>iron fist of Twin Embers</strong>, commanding the Ironbound and the galaxy's best war-foundries — force at every scale, from fleet to her own blade. A <strong>true zealot</strong>, righteous and deceived; she shields Lotus Silverblood as perfect cover and has no idea she guards an apocalypse. <em>Crack:</em> the truth she's never been trusted with would shatter her.</li>
+    <li><strong>Vesh #2, #3, #5, #6</strong> — <em>open.</em> · <strong>Vesh #7</strong> — the newest and least proven; the face the crew likely meets first.</li>
+  </ul>
+</section>
+
+<section class="page gm-section" id="c14">
+  <p class="kicker">Chapter Fourteen</p>
+  <h2>The True Faces <span class="small">(what the powers really are)</span></h2>
+  <ul>
+    <li><strong>The Aureate Chain</strong> is the Stargiver's apparatus — founded on the Aurun Line's fled fortune (the very name <strong>Aur</strong>eate is the buried <strong>Aur</strong>un name), now guarding his stolen Hearthstone and his rule. Steered from within by the Silver Coil. <em>Lotus is the honest face atop a lie he's never seen.</em></li>
+    <li><strong>The Arcane Survey</strong> is a battleground — most of it sincere scholarship, but riddled with the Coil's <strong>"rot,"</strong> and home to a <strong>hidden cell</strong> quietly investigating the founding expedition (a thread that leads straight to the truth).</li>
+    <li><strong>The Faith of the Stargiver</strong> is the ocean the Coil swims in: a real, good, beloved religion whose holiest sorrow mourns a death that never happened, and whose dearest command keeps the galaxy away from the scene of the crime.</li>
+  </ul>
+  <div class="tnote"><span class="label">🛠️ The Cruellest Hard Choice</span>
+  The faith is <em>real and good for people.</em> To expose the truth is to shatter a beloved church, topple the galaxy's industrial heart, and brand its martyr a murderer. <em>Do you tear down three centuries of light to reveal the dark beneath it?</em></div>
+</section>
+
+<section class="page gm-section" id="c15">
+  <p class="kicker">Chapter Fifteen</p>
+  <h2>Running the Reckoning <span class="small">(the metaplot)</span></h2>
+  <p class="lead">After <strong>222 years</strong> out of resonance, the stolen Hearthstone nears its hatching. The <strong>Reckoning</strong> is the star-mother — twice robbed — stirring at last to reclaim her second child before it curdles into a Devourer inside the most populated system in the galaxy.</p>
+  <ul>
+    <li><strong>The clock.</strong> Left unchecked, the City of Pearls becomes the cradle of a second Devourer. The Stargiver swears he'll master it; he won't.</li>
+    <li><strong>The only cure kills the villain.</strong> The stone must go home to its mother. That ends the second Devourer — and the Stargiver with it.</li>
+    <li><strong>Who can be turned.</strong> Lotus (if woken), Mirreth (if the truth could reach her), the Survey's hidden cell, even — at the edge of possibility — the grieving star-mother herself, if someone learns and <strong>speaks her true name</strong>: <em>the one who lights the dark.</em></li>
+  </ul>
+  <div class="gm"><span class="label">Player-initiated</span>
+  The Reckoning's stages unfold from the moment the crew triggers it — measured in relative time from there. The galaxy, sensing the egg come into play, begins to answer.</div>
+</section>
+
+<!-- ===== APPENDICES ===== -->
+<section class="page" id="appA">
+  <p class="kicker">Appendix A</p>
+  <h2>Master Chronology</h2>
+  <p class="small"><em>Dates are <strong>YA</strong> = years before the present. Hard canon: the Second Theft (222 YA) and the 69-year Quickening. Older dates are approximate.</em> 🔓 public · 🔒 hidden.</p>
+  <table>
+    <tr><th>Date</th><th>Event</th><th></th></tr>
+    <tr><td>~5,000–7,000 YA</td><td><strong>The Obsession &amp; the Breach</strong> — the Keth'aal find the star-mother and take a Hearthstone.</td><td>🔒</td></tr>
+    <tr><td>the millennia after</td><td><strong>The Long Draining</strong> — a stolen star-heart powers their golden age.</td><td>🔒</td></tr>
+    <tr><td>~3,000–4,000 YA</td><td><strong>The First Reckoning</strong> — the Hearthstone curdles; the Aurun Line flees; Sael'aan is <strong>swallowed</strong>, becoming the <strong>Devourer</strong>. The star-mother withdraws, grieving.</td><td>🔒</td></tr>
+    <tr><td>~3,000 → ~430 YA</td><td><strong>The Exile</strong> — the Aurun Line dwindles across generations.</td><td>🔒</td></tr>
+    <tr><td>~430 YA</td><td><strong>Iss'reth Aurun is born</strong> — last of the Keth'aal.</td><td>🔒</td></tr>
+    <tr><td>deep antiquity → ~330 YA</td><td><strong>The Rise of Twin Embers</strong> (and the Arcane Survey).</td><td>🔓</td></tr>
+    <tr><td>~330 YA</td><td><strong>The Coming</strong> — the Stargiver arrives.</td><td>🔓</td></tr>
+    <tr><td>~330 → ~261 YA</td><td><strong>The Quickening (69 yrs)</strong> — the great uplift; the Faith is born; the Chain founded.</td><td>🔓</td></tr>
+    <tr><td>~261 → 222 YA</td><td><strong>The Charting</strong> — he charts the star-mother's womb.</td><td>🔒</td></tr>
+    <tr><td><strong>222 YA</strong></td><td><strong>The Second Theft / the Ascension</strong> — massacre at the womb; the Hearthstone taken; immortality; the <strong>Last Transmission</strong> sells it as martyrdom.</td><td>🔒 / 🔓</td></tr>
+    <tr><td>222 YA → present</td><td><strong>The Long Erasure</strong> — hidden rule; the Silver Coil; the Faith grows galaxy-dominant; the Voidmother is shunned.</td><td>🔒 / 🔓</td></tr>
+    <tr><td><strong>Now (0 YA)</strong></td><td>The Hearthstone, 222 years out of resonance, is <strong>curdling.</strong></td><td>🔒</td></tr>
+    <tr><td>player-triggered →</td><td><strong>The Reckoning.</strong></td><td>🔒 → 🔓</td></tr>
+  </table>
+</section>
+
+<section class="page" id="appB">
+  <p class="kicker">Appendix B</p>
+  <h2>Dramatis Personae &amp; Key Entities</h2>
+  <h4>People</h4>
+  <ul>
+    <li><strong>The Stargiver / Iss'reth Aurun</strong> — immortal antagonist; last Keth'aal; the charming predator on a leash to the stone.</li>
+    <li><strong>The First (Vesh #1)</strong> — faceless spymaster-assassin; the Stargiver's right hand.</li>
+    <li><strong>Chain-Lady Mirreth (Vesh #4)</strong> — iron fist of Twin Embers; zealot; Lotus's secret shield.</li>
+    <li><strong>Chain-Lord Lotus Silverblood</strong> — honest public sovereign of the Chain; knows nothing.</li>
+    <li><strong>Thessaly Vorn</strong> — lost within the Voidmother <em>(mystery)</em>. · <strong>Vael Aren</strong> — within the Chorus <em>(mystery)</em>.</li>
+  </ul>
+  <h4>Cosmic &amp; Places</h4>
+  <ul>
+    <li><strong>The Voidmother (VB-008)</strong> — the star-mother (true nature hidden); her womb.</li>
+    <li><strong>The Devourer (VB-005)</strong> — a curdled stolen Hearthstone; the grave of <strong>Sael'aan</strong>; source of the <strong>Chorus</strong>.</li>
+    <li><strong>The Hearthstone</strong> — a star-mother's gestating star-heart; miracle and apocalypse both.</li>
+    <li><strong>The City of Pearls</strong> — built on the stolen Hearthstone (Solara Prime).</li>
+  </ul>
+  <h4>Powers</h4>
+  <ul>
+    <li><strong>The Aureate Chain</strong> · <strong>The Arcane Survey</strong> · <strong>The Faith of the Stargiver</strong> · <strong>The Silver Coil</strong> (the <strong>Vesh'kaar</strong>) · the <strong>Keth'aal / First People</strong> (extinct).</li>
+  </ul>
+  <hr>
+  <p class="center small"><em>End of draft. The dark is still being charted.</em></p>
+  <div class="art">🎨 [ Back cover: the silver serpent pendant, and beneath it, almost too faint to see, the curve of a black hole ]</div>
+  <a class="backtotop" href="#top">▲ back to top</a>
+</section>
+
+</body>
+</html>

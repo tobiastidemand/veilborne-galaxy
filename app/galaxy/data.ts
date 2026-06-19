@@ -24,14 +24,48 @@ export type BodyKind =
   | "mirror"
   | "anomaly";
 
+/** Breathability classification for a body's air, surfaced in the survey panel. */
+export type AtmosphereStatus = "breathable" | "marginal" | "hostile" | "none";
+
+export interface Atmosphere {
+  status: AtmosphereStatus;
+  detail: string;
+}
+
+export interface Location {
+  name: string;
+  note?: string;
+  /** Dossier blurb shown when the location is opened from the body panel. */
+  description?: string;
+}
+
 export interface CelestialBody {
   name: string;
   description: string;
   color: string;
   highlight?: boolean;
   kind?: BodyKind;
+  /** Air quality / breathability, shown in the planet survey panel. */
+  atmosphere?: Atmosphere;
+  /** Known (public) faction presence on this body — present factions only. */
+  factions?: SystemFaction[];
+  /** Discovered native species, if any. Undefined shows as "None discovered". */
+  homeSpecies?: string;
+  /** Population note; shown only when present. */
+  population?: string;
+  /** Notable locations on this body, listed under Population. */
+  locations?: Location[];
   /** True for generated "uncharted" bodies that pad a system to its stated counts. */
   synthetic?: boolean;
+}
+
+/** Known (public) faction presence in a system, for the survey panel. */
+export type FactionPresence = "full" | "some" | "none";
+
+export interface SystemFaction {
+  name: string;
+  presence: FactionPresence;
+  note?: string;
 }
 
 export interface StarSystemData {
@@ -47,6 +81,8 @@ export interface StarSystemData {
   anomalies: number;
   distance: string;
   chain: { level: ChainLevel; detail: string };
+  /** Known (public) faction presence, shown in the survey panel. Hidden factions are never listed. */
+  factions?: SystemFaction[];
   threat: Threat;
   bodies: CelestialBody[];
   lore: string;
@@ -72,6 +108,37 @@ export const THREAT_STYLE: Record<Threat, { color: string; bg: string }> = {
   HIGH: { color: "#e84daa", bg: "rgba(232,77,170,0.12)" },
 };
 
+export const PRESENCE_STYLE: Record<
+  FactionPresence,
+  { color: string; label: string }
+> = {
+  full: { color: "#5fd38a", label: "Full presence" },
+  some: { color: "#e0b84a", label: "Some presence" },
+  none: { color: "#e0644a", label: "No presence" },
+};
+
+function chainLevelToPresence(level: ChainLevel): FactionPresence {
+  if (level === "ADMINISTRATIVE HQ" || level === "DOMINANT") return "full";
+  if (level === "ACTIVE" || level === "COVERT" || level === "LIMITED")
+    return "some";
+  return "none";
+}
+
+/**
+ * Public faction presence for a system: the explicit authored list if present,
+ * else a Chain-only fallback derived from the legacy `chain` field.
+ */
+export function systemFactions(s: StarSystemData): SystemFaction[] {
+  if (s.factions) return s.factions;
+  return [
+    {
+      name: "Aureate Chain",
+      presence: chainLevelToPresence(s.chain.level),
+      note: s.chain.detail,
+    },
+  ];
+}
+
 export const SYSTEMS: StarSystemData[] = [
   {
     id: "solara-prime",
@@ -82,50 +149,182 @@ export const SYSTEMS: StarSystemData[] = [
     color: "#f0d080",
     size: 1.6,
     position: [0, 0, 0],
-    planets: 6,
-    anomalies: 1,
+    planets: 4,
+    anomalies: 3,
     distance: "0.0 ly (Core)",
     chain: {
       level: "ADMINISTRATIVE HQ",
       detail:
-        "City of Pearls, Caelum, ruled by Chain-Lord Lotus Silverblood.",
+        "Administrative HQ: the City of Pearls (Caelum), under Chain-Lord Lotus Silverblood. The Chain works every world here — Aethon's mines, Glacius's water, Verdania's drug-licensing.",
     },
+    factions: [
+      {
+        name: "Aureate Chain",
+        presence: "full",
+        note: "Administrative HQ — the City of Pearls.",
+      },
+      {
+        name: "The Ayvenni",
+        presence: "full",
+        note: "Sovereign of Caelum's drifting sky-cities.",
+      },
+      {
+        name: "Gnomlin Cartels",
+        presence: "some",
+        note: "Hold Verdania and the Klonga trade.",
+      },
+      {
+        name: "Arcane Survey",
+        presence: "full",
+        note: "The great library-station, the Cartographer; Shimmerview University.",
+      },
+      {
+        name: "Faith of the Stargiver",
+        presence: "some",
+        note: "The rising Aureate Collective, at the Star Garden.",
+      },
+      { name: "Ascendant Throne", presence: "none" },
+    ],
     threat: "LOW",
     bodies: [
       {
         name: "Aethon",
+        factions: [{ name: "Aureate Chain", presence: "full" }],
+        population: "Chain work-camps — debt-labour and convicts (the Wasteland).",
+        locations: [
+          {
+            name: "The Wasteland",
+            note: "Chain work-camp / prison",
+            description:
+              "The Chain's great work-camp on Aethon, a prison in all but name — where you go when you can't pay the Chain back and still want to live. Debt-labour and convicts work the magma mines for silver, gold, and obsidian, holding off the fire elementals with hydro-blasters.",
+          },
+        ],
         description:
-          "Scorched forge-world, Mithralite ore, fire elementals in deep mines.",
+          "Scorched volcanic inner world of magma rivers, rich in silver, gold, and obsidian. A Chain company-world run on debt-labour and the indentured, centred on the 'Wasteland' work-camp; fire elementals haunt the deep mines, held off with hydro-blasters.",
         color: "#ff7744",
+        atmosphere: {
+          status: "hostile",
+          detail:
+            "Choked with soot and carbon dioxide — rebreathers are mandatory.",
+        },
       },
       {
         name: "Verdania",
+        factions: [
+          { name: "Gnomlin Cartels", presence: "full" },
+          { name: "Aureate Chain", presence: "some" },
+          { name: "Arcane Survey", presence: "some" },
+        ],
+        homeSpecies: "The Gnomlins",
+        population: "Scattered Gnomlin jungle-enclaves; transient harvesters.",
+        locations: [
+          {
+            name: "Klonga Landing",
+            note: "the cartels' river-port",
+            description:
+              "The one enclave the Gnomlin cartels keep open to outsiders — a seething river-market where the galaxy's drug money changes hands. It greets every ship that enters the system with the same eternal, misspelled hail: \"WE SELL KONGA.\"",
+          },
+        ],
         description:
-          "Lush jungle moon, primitive civilization, ancient ruins pre-dating recorded history.",
+          "The one living world: a lethal rainforest-and-marsh of oversized horrors and the ancient apex 'the Old Quiet' — and the galaxy's botanical treasury, source of the drug Klonga. Run by the Gnomlin cartels, and dotted with ancient Keth'aal ruins.",
         color: "#66cc66",
+        atmosphere: {
+          status: "marginal",
+          detail:
+            "The air breathes fine; the spores, toxins, and horrors do not — every breath is a gamble.",
+        },
       },
       {
         name: "Caelum",
+        factions: [
+          { name: "Aureate Chain", presence: "full" },
+          { name: "The Ayvenni", presence: "full" },
+        ],
+        homeSpecies: "The Ayvenni",
+        population: "~12 million in the City of Pearls, plus the Ayvenni sky-cities.",
+        locations: [
+          {
+            name: "The City of Pearls",
+            note: "the Chain's floating capital",
+            description:
+              "The largest sky-city the Ayvenni ever raised, and the Aureate Chain's administrative seat — a fixed beacon of iridescent void-glass towers adrift in Caelum's amber storms. Twelve million live across its districts, from the Spires to the Underdocks, and Chain-Lord Lotus Silverblood rules it all. The gilded heart of the galaxy.",
+          },
+        ],
         description:
-          "Gas giant with amber storms; City of Pearls floats in cloud bands — administrative seat of the Aureate Chain, ruled by Chain-Lord Lotus Silverblood; iridescent void-glass towers visible from orbit.",
+          "Not a gas giant but a cloud-world: endless amber storms over a Veil-touched core that breathes 'veil gas' (crystallised into all void-glass). Home of the Ayvenni cloudwalkers — and of the City of Pearls, the Chain's floating capital under Chain-Lord Lotus Silverblood.",
         color: "#f0d080",
         highlight: true,
+        atmosphere: {
+          status: "marginal",
+          detail:
+            "Its shimmering veil gas is, strangely, harmless to breathe — but endless storms and a bottomless fall make Caelum no place to go unsheltered.",
+        },
+      },
+      {
+        name: "Motel Prime",
+        population: "One family and the travellers passing through.",
+        description:
+          "A small, family-run waystation in the middle of the system — a fuel stop, motel rooms with a real space view, and a bar-bistro where travellers from every world rest between Skips. Run with great heart and greater eccentricity by one man, his wife, and their two kids.",
+        color: "#ffb347",
+        kind: "station",
+        atmosphere: {
+          status: "breathable",
+          detail:
+            "A cosy, lived-in station habitat: warm air, good food, and a view of the void.",
+        },
       },
       {
         name: "Glacius",
+        factions: [{ name: "Aureate Chain", presence: "full" }],
+        population:
+          "Chain water-works and the Cold Lock prison; scattered ice-fishing camps.",
+        locations: [
+          {
+            name: "The Cold Lock",
+            note: "Chain prison-camp",
+            description:
+              "The Chain's prison-camp at the Glacius water-works, whose inmates work the pumps and lines in killing cold — Aethon's icy mirror, and a slow death sentence in all but name. Many run; the escapees scatter into the ice-fishing camps out on the floes.",
+          },
+        ],
         description:
-          "Frozen world; vast ocean beneath the ice and something very old.",
+          "A frozen, breathable world: a dead surface of Chain water-works and fisheries, the 'Cold Lock' prison, and escapee ice-fishing camps, stalked by the ice-shark Rimemaw. Its pipelines suffer endless, baffling sabotage from the deep — and older things may stir beneath the ice.",
         color: "#aaddff",
+        atmosphere: {
+          status: "marginal",
+          detail:
+            "Breathable air, but lethal cold — exposed flesh freezes fast and the storms kill.",
+        },
       },
       {
-        name: "The Cradle",
+        name: "The Star Garden",
+        factions: [{ name: "Faith of the Stargiver", presence: "some" }],
+        population: "The Aureate Collective — a small but growing congregation.",
         description:
-          "Abandoned space station of enormous size; hull markings in no known language.",
-        color: "#999999",
+          "A vast, self-sufficient living space station — hydroponics, meat-vats, recycled water — and home of the Aureate Collective, a rising missionary sect that welcomes all strays into its fold.",
+        color: "#c9b86a",
         kind: "station",
+        atmosphere: {
+          status: "breathable",
+          detail:
+            "A sealed, self-sufficient habitat: clean grown air, warm and lived-in.",
+        },
+      },
+      {
+        name: "The Cartographer",
+        factions: [{ name: "Arcane Survey", presence: "full" }],
+        population: "Survey scholars, archivists, and visiting crews.",
+        description:
+          "The Arcane Survey's great library and cartographic station, adrift in the gilded core — the Great Chart, relic-research labs, and Tier-locked vaults. Chain-funded; the order's older founding HQ sits on Sanctaris, in Twin Embers.",
+        color: "#aa8855",
+        kind: "station",
+        atmosphere: {
+          status: "breathable",
+          detail:
+            "A sealed station habitat: clean, controlled, standard air held against the void.",
+        },
       },
     ],
-    lore: "The beating heart of the Veilborn — and the seat of the Aureate Chain's power. The City of Pearls drifts through Caelum's amber clouds, its void-glass spires catching the light of the yellow star like a lantern in the deep. Cartographers mark this system as the starting point of all expeditions. Every road in the Veilborn eventually leads back here, and to the Chain.",
+    lore: "The gilded core: VB-001, the system every chart is measured from, and the throne of the Aureate Chain. The City of Pearls floats in Caelum's amber storms — void-glass towers catching the yellow sun — while Aethon burns, Verdania devours, and Glacius freezes around it. The civilised heart of the galaxy, and the place that quietly sets the price of reaching it.",
   },
   {
     id: "crimson-maw",
@@ -287,8 +486,8 @@ export const SYSTEMS: StarSystemData[] = [
     lore: "The navigation charts mark it in red and say only: DO NOT APPROACH UNSHIELDED. The Devourer eats light, eats ships, eats memory. Those who orbit too close return not knowing their own names. Whatever is at its center — the Arcane Survey refuses to speculate.",
   },
   {
-    id: "lantern-pulse",
-    name: "Lantern Pulse",
+    id: "the-great-lighthouse",
+    name: "The Great Lighthouse",
     designation: "VB-006 · PULSAR SYSTEM",
     starType: "Millisecond Pulsar, exotic",
     kind: "pulsar",
@@ -325,54 +524,159 @@ export const SYSTEMS: StarSystemData[] = [
         kind: "station",
       },
     ],
-    lore: "Every 3.7 milliseconds, the Lantern Pulse sweeps its deadly beam across the system. The inhabitants of Rhythm have evolved around this — their biology, architecture, and religion all built to the pulse. They consider it sacred. They consider strangers who don't bow to it... impolite.",
+    lore: "Every 3.7 milliseconds, the Great Lighthouse sweeps its deadly beam across the system. The inhabitants of Rhythm have evolved around this — their biology, architecture, and religion all built to the pulse. They consider it sacred. They consider strangers who don't bow to it... impolite.",
   },
   {
     id: "twin-embers",
     name: "Twin Embers",
     designation: "VB-007 · BINARY SYSTEM",
-    starType: "Binary G+K type pair",
+    starType: "Two dim red ember-suns (binary)",
     kind: "binary",
-    color: "#ffaa44",
+    color: "#cf4a28",
     size: 1.6,
     position: [-3, -8, 15],
-    planets: 7,
-    anomalies: 1,
+    planets: 5,
+    anomalies: 0,
     distance: "2.1 ly",
     chain: {
-      level: "DOMINANT",
+      level: "ACTIVE",
       detail:
-        "Commercial heartland. Key sites: Twinreach Exchange · Ember's Rest Counting House · The Caul · Iron Ledger (military, classified).",
+        "Commercial heartland — vast but slipping, as the Ascendant Throne draws the devout back to its own networks. Key sites: Twinreach Exchange · Twinreach Counting House · the Iron Ledger (Aureate Fleet base, unlisted).",
     },
+    factions: [
+      {
+        name: "Ascendant Throne",
+        presence: "full",
+        note: "Sovereign of the heartland.",
+      },
+      {
+        name: "Faith of the Stargiver",
+        presence: "full",
+        note: "Its holy see, at Ember's Rest.",
+      },
+      {
+        name: "Arcane Survey",
+        presence: "full",
+        note: "Its founding HQ — the oldest in the order — stands on Sanctaris.",
+      },
+      {
+        name: "Aureate Chain",
+        presence: "some",
+        note: "Vast but slipping, year by pious year.",
+      },
+    ],
     threat: "LOW",
     bodies: [
       {
-        name: "Twinreach",
+        name: "Vanthis",
+        factions: [
+          { name: "Ascendant Throne", presence: "full" },
+          { name: "Aureate Chain", presence: "some" },
+        ],
+        homeSpecies: "Humans (Vanthi)",
+        population: "Hard-bitten mining towns and the capital, the Kiln.",
+        locations: [
+          {
+            name: "The Kiln",
+            note: "the dusty capital",
+            description:
+              "The dusty frontier capital of the desert ore-world, baking under the close embers at the heart of the Throne's mining operations — proud, aggrieved, and fed entirely from the Chain's ledger.",
+          },
+        ],
         description:
-          "Perpetual twilight city between both suns; home to the Twinreach Exchange, the Chain's largest trading floor in the Veilborn; Iron Ledger military platform orbits silently above, unlisted on all navigation charts.",
-        color: "#ffaa44",
+          "The system's one hot world, riding closest to the twin embers: a sun-scorched desert of ore-derricks and mining towns under its dusty capital, the Kiln. The Ascendant Throne digs and the Aureate Chain banks — and ships in the water — while the squeezed Vanthi work the gap between them.",
+        color: "#ddaa66",
+        atmosphere: {
+          status: "marginal",
+          detail:
+            "Thin but breathable — and brutal: furnace-hot by day, scoured by dust and the bare UV of the close embers. Outside the towns, rebreathers and shade are wise.",
+        },
       },
       {
         name: "Ember's Rest",
+        factions: [
+          { name: "Ascendant Throne", presence: "full" },
+          { name: "Faith of the Stargiver", presence: "full" },
+          { name: "Arcane Survey", presence: "some" },
+        ],
+        homeSpecies: "Humans (Sanctine) — humanity's cradle",
+        population: "Most of the system; the cathedral-capital Sanctaris.",
+        locations: [
+          {
+            name: "Sanctaris",
+            note: "the cathedral-capital; the empty throne",
+            description:
+              "The cathedral-capital of the Ascendant Throne and the holy see of the Faith — seat of the First Light and the empty throne of the Ascended One. Its cathedral-foundries are the grandest in the galaxy, where work is worship and the fires never rest but on Ascension night.",
+          },
+          {
+            name: "Arcane Survey HQ",
+            note: "the order's founding seat",
+            description:
+              "The Arcane Survey's founding headquarters, standing in Sanctaris — the oldest and proudest seat in the whole order, raised before the Stargiver ever came, and the wellspring of knowledge he drew on to set off the Quickening. An old and proud institution; its great library-station, the Cartographer, now hangs in Solara Prime.",
+          },
+        ],
         description:
-          "Most hospitable and populated world in the Veilborn; Chain's Counting House in the walled merchant quarter processing cargo manifests and crew contracts.",
+          "Humanity's one cradle and the holy capital. Home to Sanctaris, the cathedral-city — seat of the First Light and the empty throne of the Ascended One — where most of the system's people live and the grandest temple-foundries burn.",
         color: "#ffcc88",
+        atmosphere: {
+          status: "breathable",
+          detail:
+            "Humanity's native air: cool, dim, and low in UV — the one sky a Twin Embers human was made to breathe.",
+        },
       },
       {
-        name: "Vanthis",
+        name: "Twinreach",
+        factions: [
+          { name: "Aureate Chain", presence: "full" },
+          { name: "Ascendant Throne", presence: "some" },
+        ],
+        homeSpecies: "Humans (Brasshaven) + a dozen alien peoples",
+        population: "Brasshaven — the galaxy's busiest human crossroads.",
+        locations: [
+          {
+            name: "Brasshaven",
+            note: "the great neon port",
+            description:
+              "The galaxy's busiest human crossroads: a neon dock-megacity of a hundred tongues, free-wheeling and cosmopolitan, home to the Veilborn's largest black market. As the locals say: \"Brasshaven isn't the Ascendancy; Brasshaven is Brasshaven.\"",
+          },
+        ],
         description:
-          "Desert world; the Vanthis Cartel controls the water; the Aureate Chain controls what arrives by ship; neither side discusses the arrangement openly.",
-        color: "#ddaa66",
+          "The system's great port and busiest dock — a Chain company-world on Throne soil. Its neon megacity Brasshaven is the galaxy's busiest human crossroads: cosmopolitan, free-wheeling, and home to the Veilborn's largest black market. The Ironbound's Aureate Fleet rides overhead — flagship the Debt Collector, based on the floating platform Iron Ledger, from which Chain-Lady Mirreth commands.",
+        color: "#ffaa44",
+        atmosphere: {
+          status: "breathable",
+          detail:
+            "Breathable everywhere, dense and humid in the dock-sprawl; the lower levels hang thick with industrial smog.",
+        },
       },
       {
-        name: "The Caul",
+        name: "King Casabian",
+        factions: [{ name: "Ascendant Throne", presence: "some" }],
+        population: "Throne gas-extraction platform crews.",
         description:
-          "Unnamed on civilian charts; floating Chain station at the gravitational midpoint between the twin suns — for transactions that benefit from occurring beyond any planetary jurisdiction.",
-        color: "#aa8855",
-        kind: "station",
+          "The system's largest world: a banded gas giant named for the last king to rule Ember's Rest before the Stargiver came. Its deep atmosphere is rich in hydrogen, helium, nitrogen and rarer gases, drawn off by Ascendant Throne platforms that hover in the upper clouds. No surface, no ground, no life.",
+        color: "#b58f5e",
+        atmosphere: {
+          status: "hostile",
+          detail:
+            "A bottomless hydrogen–helium–nitrogen envelope with no surface — crushing pressure, killing cold, and toxic gases below the cloud-platforms. Survivable only inside a sealed rig.",
+        },
+      },
+      {
+        name: "Wellspring",
+        factions: [{ name: "Aureate Chain", presence: "full" }],
+        population: "Chain extraction-and-bottling crews.",
+        description:
+          "A frozen, lifeless outer world of ice and slush-seas — the system's water. The Aureate Chain works it on an industrial scale: vast extraction-and-bottling plants draw the ice, bottle it on-world, and ship Wellspring water across the galaxy.",
+        color: "#a9c4d2",
+        atmosphere: {
+          status: "none",
+          detail:
+            "Frozen and all but airless — a breath of vapour over the ice. Lifeless; every lungful is supplied and sealed.",
+        },
       },
     ],
-    lore: "Twin Embers is the Aureate Chain's commercial heartland. Four trade hubs, a hidden military platform, and over sixty percent of all system commerce passing through Chain-registered intermediaries. Chain-Lady Mirreth commands it all from the Iron Ledger, high above Twinreach. It is the most 'civilized' corner of the Veilborn. That civilization has a price, and the Chain sets it.",
+    lore: "The beating heart of the modern galaxy: a binary of two dim red ember-suns, and humanity's one cradle — the most populous, productive, and devout system in the Veilborn. Here the Ascendant Throne keeps the empty chair of its martyred god, the Faith its holy see, the Aureate Chain its richest (and slowly slipping) market, and the Arcane Survey its founding HQ on Sanctaris. The galaxy's brightest civilisation, lit beneath its dimmest sky.",
   },
   {
     id: "voidmother",
@@ -422,6 +726,53 @@ export const SYSTEMS: StarSystemData[] = [
     ],
     lore: "The Voidmother resists categorization. The star at its center emits no known spectrum of light, yet the worlds orbit happily. The Arcane Survey has classified it as a Level-7 Metaphysical Anomaly and strongly recommends leaving it alone. Adventurers, naturally, do not listen.",
   },
+  {
+    id: "the-sable-reach",
+    name: "The Sable Reach",
+    designation: "VB-009 · FRONTIER SYSTEM",
+    starType: "Dim red dwarf, far out",
+    kind: "star",
+    color: "#a85a5a",
+    size: 0.9,
+    position: [5, 14, -12],
+    planets: 2,
+    anomalies: 1,
+    distance: "9.4 ly",
+    chain: {
+      level: "MINIMAL",
+      detail: "Beyond the Chain's reach.",
+    },
+    threat: "MODERATE",
+    bodies: [
+      {
+        name: "Greythorne",
+        description:
+          "A cold, wind-scoured world on the galaxy's last shore — about the furthest place anyone has set boots.",
+        color: "#5b6173",
+      },
+    ],
+    lore: "Past the Voidmother the charts thin to rumour. The Sable Reach is one of the last lights the Arcane Survey has marked in the deep dark beyond her region — a dim red ember of a star, barely surveyed and barely reached. The frontier of the known galaxy.",
+  },
+  {
+    id: "the-outer-dark",
+    name: "The Outer Dark",
+    designation: "VB-010 · UNCHARTED SYSTEM",
+    starType: "Uncharted — deep void",
+    kind: "arcane",
+    color: "#6a5f88",
+    size: 0.8,
+    position: [9, 18, -16],
+    planets: 1,
+    anomalies: 2,
+    distance: "13.1 ly",
+    chain: {
+      level: "UNKNOWN",
+      detail: "Uncharted; no recorded approach.",
+    },
+    threat: "HIGH",
+    bodies: [],
+    lore: "The furthest point on any chart — the edge of the known galaxy, plotted from afar and never sailed to. Beyond the Voidmother, beyond the Survey's deepest reach, the Outer Dark is a faint smudge on the long-range scans and a question no expedition has yet answered.",
+  },
 ];
 
 export const JUMP_LANES: [string, string][] = [
@@ -433,8 +784,8 @@ export const JUMP_LANES: [string, string][] = [
   ["voidmother", "crimson-maw"],
   ["pale-cipher", "the-devourer"],
   ["twin-embers", "pale-cipher"],
-  ["azuran-deep", "lantern-pulse"],
-  ["lantern-pulse", "pale-cipher"],
+  ["azuran-deep", "the-great-lighthouse"],
+  ["the-great-lighthouse", "pale-cipher"],
 ];
 
 export const systemById = (id: string) =>

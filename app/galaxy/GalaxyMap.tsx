@@ -10,7 +10,7 @@ import SystemPanel from "./SystemPanel";
 import PlanetPanel from "./PlanetPanel";
 import { CanvasErrorBoundary } from "./CanvasErrorBoundary";
 import { usePrefersReducedMotion } from "./useReducedMotion";
-import { useCampaign } from "./useCampaign";
+import { useCampaign, partySystem } from "./useCampaign";
 import { SYSTEMS, getSystemBodies, systemById } from "./data";
 import { HOME_CAMERA } from "./useCameraFly";
 import { HudCorner, HudSlashes, HudReticle } from "./Hud";
@@ -228,28 +228,25 @@ function Legend({
   );
 }
 
-/** One-stop DM remote: reveal/hide every system, set the party, reset, exit. */
-function DMConsole({
+/** DM controls, embedded in the Settings panel: reveal/hide, set party, reset, exit. */
+function DMControls({
   campaign,
   charted,
   onFly,
   onReset,
-  onClose,
 }: {
   campaign: ReturnType<typeof useCampaign>;
   charted: number;
   onFly: (id: string) => void;
   onReset: () => void;
-  onClose: () => void;
 }) {
   return (
-    <div className="panel panel-grid scroll-thin pointer-events-auto fixed left-3 top-[4.6rem] z-[46] max-h-[80vh] w-[272px] overflow-y-auto rounded-md border border-white/10 bg-gradient-to-b from-bg/90 to-bg/30 [&>*]:relative [&>*]:z-[1]">
-      <div className="flex items-center justify-between px-4 pb-1 pt-3">
-        <span className="flex items-center gap-2">
-          <span className="index-marker">DM</span>
-          <span className="font-display text-[12px] font-medium tracking-[0.02em] text-fg">
-            Console
-          </span>
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-faint">
+          {charted} / {SYSTEMS.length} charted
+        </span>
+        <span className="flex items-center gap-1">
           <span
             title={
               campaign.shared
@@ -264,23 +261,12 @@ function DMConsole({
             {campaign.shared ? "LIVE" : "LOCAL"}
           </span>
         </span>
-        <button
-          onClick={onClose}
-          aria-label="Close DM console"
-          className="text-sm text-muted transition-colors hover:text-fg"
-        >
-          ✕
-        </button>
       </div>
-      <div className="px-4 pb-4">
-        <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-faint">
-          {charted} / {SYSTEMS.length} charted
-        </div>
 
-        <ul className="flex flex-col gap-1.5">
+      <ul className="flex flex-col gap-1.5">
           {SYSTEMS.map((s) => {
             const shown = campaign.isDiscovered(s.id);
-            const isParty = campaign.party === s.id;
+            const isParty = partySystem(campaign.party) === s.id;
             const dot = s.kind === "blackhole" ? "#e84daa" : s.color;
             return (
               <li key={s.id} className="flex items-center gap-1.5">
@@ -333,7 +319,6 @@ function DMConsole({
             Exit DM
           </button>
         </div>
-      </div>
     </div>
   );
 }
@@ -361,7 +346,6 @@ export default function GalaxyMap() {
 
   const campaign = useCampaign();
   const { dmMode, isDiscovered } = campaign;
-  const [dmConsoleOpen, setDmConsoleOpen] = useState(true);
 
   const focusSystemId = view.mode === "galaxy" ? null : view.systemId;
 
@@ -547,14 +531,6 @@ export default function GalaxyMap() {
             <h1 className="flex items-center gap-2.5 font-display text-lg font-bold tracking-[0.02em] text-fg sm:text-xl">
               <span className="h-4 w-px bg-accent shadow-[0_0_10px_var(--accent)]" />
               The Veilborn Galaxy
-              {dmMode && (
-                <button
-                  onClick={() => setDmConsoleOpen((o) => !o)}
-                  className="pointer-events-auto align-middle rounded border border-accent/50 px-1.5 py-0.5 font-mono text-[9px] tracking-[0.16em] text-accent transition-colors hover:bg-accent/10"
-                >
-                  ⌖ DM CONSOLE
-                </button>
-              )}
             </h1>
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[10px] uppercase tracking-[0.16em] text-muted">
               <span>Sector Omega-9</span>
@@ -597,18 +573,18 @@ export default function GalaxyMap() {
         total={SYSTEMS.length}
       />
 
-      <HudSettings />
-
-      {/* DM remote */}
-      {dmMode && dmConsoleOpen && (
-        <DMConsole
-          campaign={campaign}
-          charted={charted}
-          onFly={selectSystem}
-          onReset={handleReset}
-          onClose={() => setDmConsoleOpen(false)}
-        />
-      )}
+      <HudSettings
+        dm={
+          dmMode ? (
+            <DMControls
+              campaign={campaign}
+              charted={charted}
+              onFly={selectSystem}
+              onReset={handleReset}
+            />
+          ) : undefined
+        }
+      />
 
       {/* battle stations */}
       <Link
@@ -652,6 +628,15 @@ export default function GalaxyMap() {
         open={planetPanelOpen}
         reducedMotion={reducedMotion}
         accent={accent}
+        dmMode={dmMode}
+        isParty={
+          view.mode === "planet" &&
+          campaign.party === `${view.systemId}/${view.bodyName}`
+        }
+        onSetParty={() =>
+          view.mode === "planet" &&
+          campaign.setParty(`${view.systemId}/${view.bodyName}`)
+        }
         onBack={backToSystem}
       />
     </div>

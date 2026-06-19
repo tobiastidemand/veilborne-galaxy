@@ -65,14 +65,26 @@ function loadSet(): Set<string> {
   return set;
 }
 
-function loadString(key: string): string | null {
+// The party location is "systemId" or "systemId/bodyName" — validate the system part.
+function loadParty(): string | null {
   try {
-    const v = localStorage.getItem(key);
-    return v && isRealSystem(v) ? v : null;
+    const v = localStorage.getItem(PARTY_KEY);
+    if (!v) return null;
+    return isRealSystem(v.split("/")[0]) ? v : null;
   } catch {
     return null;
   }
 }
+
+/** Split a party location ("systemId" or "systemId/bodyName") into its parts. */
+export const partySystem = (party: string | null): string | null =>
+  party ? party.split("/")[0] : null;
+
+export const partyBodyName = (party: string | null): string | null => {
+  if (!party) return null;
+  const i = party.indexOf("/");
+  return i === -1 ? null : party.slice(i + 1);
+};
 
 function loadTrail(): string[] {
   try {
@@ -109,9 +121,7 @@ export function useCampaign(): Campaign {
   // device so the DM doesn't have to keep the flag in the URL.
   const [dmMode, setDmMode] = useState(readDmFlag);
   const [discovered, setDiscovered] = useState<Set<string>>(loadSet);
-  const [party, setPartyState] = useState<string | null>(() =>
-    loadString(PARTY_KEY)
-  );
+  const [party, setPartyState] = useState<string | null>(loadParty);
   const [trail, setTrail] = useState<string[]>(loadTrail);
   // DM gates pushing until it has reconciled with the server once.
   const [hydrated, setHydrated] = useState(() => !readDmFlag());
@@ -267,12 +277,21 @@ export function useCampaign(): Campaign {
     });
   }, []);
 
-  // Moving the party to a system "visits" it: reveal it and extend the trail.
-  const setParty = useCallback((id: string) => {
-    setPartyState(id);
-    setDiscovered((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
-    setTrail((prev) => (prev[prev.length - 1] === id ? prev : [...prev, id]));
-  }, []);
+  // Set/move the party, or toggle it off if it's already at this exact spot.
+  // Placing it "visits" the system: reveal it and extend the trail.
+  const setParty = useCallback(
+    (loc: string) => {
+      if (party === loc) {
+        setPartyState(null); // toggle the same spot off
+        return;
+      }
+      setPartyState(loc);
+      const sys = loc.split("/")[0];
+      setDiscovered((prev) => (prev.has(sys) ? prev : new Set(prev).add(sys)));
+      setTrail((prev) => (prev[prev.length - 1] === sys ? prev : [...prev, sys]));
+    },
+    [party]
+  );
 
   // Wipe progress back to the seeded starting state.
   const reset = useCallback(() => {
