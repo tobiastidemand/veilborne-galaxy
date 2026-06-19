@@ -7,6 +7,7 @@ import { PRESENCE_STYLE, type AtmosphereStatus, type CelestialBody } from "./dat
 import { PanelHudFrame } from "./Hud";
 
 type Shown = { body: CelestialBody; systemName: string };
+type OpenLocation = { bodyName: string; name: string };
 
 const ATMOSPHERE_META: Record<
   AtmosphereStatus,
@@ -79,7 +80,7 @@ export default function PlanetPanel({
   // Keep the last body rendered while the panel slides out.
   const [shown, setShown] = useState<Shown | null>(null);
   // Which location's dossier is open (a stylized in-panel card overlay).
-  const [openLocation, setOpenLocation] = useState<string | null>(null);
+  const [openLocation, setOpenLocation] = useState<OpenLocation | null>(null);
 
   // Populate immediately on first open so the slide-in is never empty.
   if (body && shown === null) setShown({ body, systemName });
@@ -125,16 +126,15 @@ export default function PlanetPanel({
       );
   }, [body, systemName, open, shown, reducedMotion]);
 
-  // Close any open location dossier when the surveyed body changes.
-  useEffect(() => {
-    setOpenLocation(null);
-  }, [shown?.body.name]);
-
   const atmo = shown?.body.atmosphere;
   const presentFactions =
     shown?.body.factions?.filter((f) => f.presence !== "none") ?? [];
+  const selectedLocation = openLocation;
   const locationOpen =
-    shown?.body.locations?.find((c) => c.name === openLocation) ?? null;
+    selectedLocation && selectedLocation.bodyName === shown?.body.name
+      ? (shown?.body.locations?.find((c) => c.name === selectedLocation.name) ??
+        null)
+      : null;
 
   return (
     <aside
@@ -251,7 +251,12 @@ export default function PlanetPanel({
                   {shown.body.locations.map((c) => (
                     <li key={c.name}>
                       <button
-                        onClick={() => setOpenLocation(c.name)}
+                        onClick={() =>
+                          setOpenLocation({
+                            bodyName: shown.body.name,
+                            name: c.name,
+                          })
+                        }
                         className="group flex w-full gap-2 text-left text-sm text-fg/90 transition-colors hover:text-accent-bright"
                       >
                         <span className="mt-[2px] text-accent/70 transition-transform group-hover:translate-x-0.5">

@@ -29,10 +29,13 @@ function readDmFlag(): boolean {
   if (flag === "1") return true;
   if (flag === "0") return false;
   try {
-    return localStorage.getItem(DM_KEY) === "1";
+    const stored = localStorage.getItem(DM_KEY);
+    if (stored === "1") return true;
+    if (stored === "0") return false;
   } catch {
-    return false;
+    /* ignore */
   }
+  return true;
 }
 
 // Write token: provided once via ?key=… (then persisted), sent on every push.
@@ -113,12 +116,12 @@ export interface Campaign {
 }
 
 /**
- * Fog-of-war / campaign state, persisted to localStorage. DM controls are
- * gated behind a `?dm=1` URL flag so shared player links stay spoiler-safe.
+ * Fog-of-war / campaign state, persisted to localStorage. The hosted chart
+ * opens as the full DM version by default; `?dm=0` switches a browser back to
+ * the player-safe view.
  */
 export function useCampaign(): Campaign {
-  // Enter DM mode with ?dm=1 (or ?dm=0 to leave); it then persists on this
-  // device so the DM doesn't have to keep the flag in the URL.
+  // ?dm=1 / ?dm=0 overrides the default and persists on this device.
   const [dmMode, setDmMode] = useState(readDmFlag);
   const [discovered, setDiscovered] = useState<Set<string>>(loadSet);
   const [party, setPartyState] = useState<string | null>(loadParty);
@@ -258,7 +261,7 @@ export function useCampaign(): Campaign {
   useEffect(() => {
     try {
       if (dmMode) localStorage.setItem(DM_KEY, "1");
-      else localStorage.removeItem(DM_KEY);
+      else localStorage.setItem(DM_KEY, "0");
     } catch {
       /* ignore */
     }
