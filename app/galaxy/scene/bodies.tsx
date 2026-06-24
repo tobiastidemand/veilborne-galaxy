@@ -77,11 +77,12 @@ function buildBodies(system: StarSystemData): BodyConfig[] {
 
   const configs = bodies.map((body, i) => {
     const kind = body.kind ?? "planet";
-    const style = PLANET_STYLES[i % PLANET_STYLES.length];
+    const style = body.visualStyle ?? PLANET_STYLES[i % PLANET_STYLES.length];
     const seed = hashSeed(system.id + ":" + body.name);
     const rand = (k: number) => ((seed >>> (k * 3)) % 1000) / 1000;
     const planet = kind === "planet";
-    const atmosphere = new THREE.Color(body.color)
+    const visualColor = body.visualColor ?? body.color;
+    const atmosphere = new THREE.Color(visualColor)
       .lerp(new THREE.Color("#ffffff"), 0.5)
       .getStyle();
     const frac = n > 1 ? i / (n - 1) : 0;
@@ -91,7 +92,7 @@ function buildBodies(system: StarSystemData): BodyConfig[] {
       seed,
       style,
       atmosphere,
-      map: planet ? makePlanetTexture(body.color, seed, style) : null,
+      map: planet ? makePlanetTexture(visualColor, seed, style) : null,
       clouds:
         planet && style === "terran" ? makeCloudTexture(seed + 17) : null,
       size: (body.synthetic ? 0.19 : 0.24) + (i % 3) * 0.06,

@@ -1067,7 +1067,7 @@ wealth made into a skyline — and the galaxy's great dream of arrival.
 > Foundational Canon, the Stargiver, and Caelum below.)*
 
 #### The Worlds *(names locked; concepts in progress)*
-Five charted bodies. Seeds below are starting points (some carried from the old chart) to
+Seven charted bodies. Seeds below are starting points (some carried from the old chart) to
 build out next:
 - **Aethon** *(the forge-world)* — the scorched inner world, and the **brutal furnace beneath
   the gilded core.** Where Caelum is wonder and the City of Pearls is opulence, Aethon is what

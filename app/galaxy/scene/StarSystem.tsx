@@ -147,32 +147,33 @@ function BlackHoleCore({ system }: { system: StarSystemData }) {
 
 // A single beam: a point at the star, flaring outward into a cone — a lighthouse
 // beam that sweeps the dark.
-function BeamCones({
-  radius,
+function SearchlightCone({
   length,
+  radius,
   opacity,
   map,
+  direction = 1,
 }: {
-  radius: number;
   length: number;
+  radius: number;
   opacity: number;
   map: THREE.Texture;
+  direction?: 1 | -1;
 }) {
-  const material = (
-    <meshBasicMaterial
-      map={map}
-      transparent
-      opacity={opacity}
-      blending={THREE.AdditiveBlending}
-      depthWrite={false}
-      side={THREE.DoubleSide}
-    />
-  );
-  // Cone apex sits at the star (origin); the wide base is `length` units out.
   return (
-    <mesh position={[0, length / 2, 0]} rotation={[Math.PI, 0, 0]}>
+    <mesh
+      position={[direction * (length / 2), 0, 0]}
+      rotation={[0, 0, direction === 1 ? Math.PI / 2 : -Math.PI / 2]}
+    >
       <coneGeometry args={[radius, length, 20, 1, true]} />
-      {material}
+      <meshBasicMaterial
+        map={map}
+        transparent
+        opacity={opacity}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      />
     </mesh>
   );
 }
@@ -184,16 +185,51 @@ function PulsarBeam({ system }: { system: StarSystemData }) {
 
   useEffect(() => () => beamMap.dispose(), [beamMap]);
 
-  useFrame(({ clock }) => {
+  useFrame((_, delta) => {
     if (reduced) return;
-    if (beamRef.current) beamRef.current.rotation.y = clock.elapsedTime * 0.7;
+    if (beamRef.current) beamRef.current.rotation.y += delta * 0.9;
   });
 
-  const length = 11;
+  const length = 18;
   return (
-    <group ref={beamRef} rotation={[0.25, 0, 0.18]}>
-      <BeamCones radius={0.55} length={length} opacity={0.5} map={beamMap} />
-      <BeamCones radius={1.25} length={length} opacity={0.14} map={beamMap} />
+    <group ref={beamRef} rotation={[0.18, 0, -0.12]}>
+      <SearchlightCone
+        direction={1}
+        length={length}
+        radius={2.2}
+        opacity={0.18}
+        map={beamMap}
+      />
+      <SearchlightCone
+        direction={1}
+        length={length * 0.88}
+        radius={0.72}
+        opacity={0.42}
+        map={beamMap}
+      />
+      <SearchlightCone
+        direction={-1}
+        length={length}
+        radius={2.2}
+        opacity={0.13}
+        map={beamMap}
+      />
+      <SearchlightCone
+        direction={-1}
+        length={length * 0.88}
+        radius={0.72}
+        opacity={0.34}
+        map={beamMap}
+      />
+      <mesh>
+        <sphereGeometry args={[system.size * 0.38, 24, 24]} />
+        <meshBasicMaterial
+          color={system.color}
+          transparent
+          opacity={0.9}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
     </group>
   );
 }

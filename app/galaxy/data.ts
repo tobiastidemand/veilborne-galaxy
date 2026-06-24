@@ -43,6 +43,8 @@ export interface CelestialBody {
   name: string;
   description: string;
   color: string;
+  visualColor?: string;
+  visualStyle?: "terran" | "rocky" | "gas" | "ice";
   highlight?: boolean;
   kind?: BodyKind;
   /** Air quality / breathability, shown in the planet survey panel. */
@@ -618,6 +620,8 @@ export const SYSTEMS: StarSystemData[] = [
         description:
           "Humanity's one cradle and the holy capital. Home to Sanctaris, the cathedral-city — seat of the First Light and the empty throne of the Ascended One — where most of the system's people live and the grandest temple-foundries burn.",
         color: "#ffcc88",
+        visualColor: "#4d9f74",
+        visualStyle: "terran",
         atmosphere: {
           status: "breathable",
           detail:

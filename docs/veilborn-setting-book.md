@@ -132,8 +132,10 @@ costs at the cosmic scale — is a question almost no one thinks to ask.
 
 ## 4 · The Charted Map
 
-Eight systems are charted and named. Most folk live and die within a handful of them;
-the rest are rumor, danger, and prize. *(Full gazetteer: Part III.)*
+Ten systems are marked on the charts — the original eight, named and charted, plus two
+faint frontier marks beyond the Voidmother (the Sable Reach and the Outer Dark). Most folk
+live and die within a handful of them; the rest are rumor, danger, and prize. *(Full
+gazetteer: Part III.)*
 
 | System | Reputation |
 |---|---|
@@ -259,7 +261,7 @@ pilots pray not to drift toward it. To sail there is not merely dangerous — it
 
 The bright heart of the charted galaxy, and the seat of the **City of Pearls**.
 
-- **Aethon** · **Verdania** · **Caelum** *(the gas giant the City of Pearls floats over)*
+- **Aethon** · **Verdania** · **Caelum** *(the cloud-world the City of Pearls hangs within)*
   · **Glacius** · **The Star Garden** · **Motel Prime** · **The Cartographer**
 
 > 🔒 *The City of Pearls is built on the stolen Hearthstone. Part IV.*
@@ -416,7 +418,13 @@ lives and that his power flows from a **relic of "veil-magic"** — but no more 
   scale, from fleet to her own blade. A **true zealot**, righteous and deceived; she
   shields Lotus Silverblood as perfect cover and has no idea she guards an apocalypse.
   *Crack:* the truth she's never been trusted with would shatter her.
-- **Vesh #2, #3, #5, #6** — *open.* · **Vesh #7** — the newest and least proven; the face
+- **Vesh #3 — *the Prophet*.** The Coil's **false messiah**, whose weapon is **belief.** A
+  beloved founder-voice, #3 built and leads the **Aureate Collective** *(the Star Garden,
+  Solara Prime)* — the Stargiver's manufactured counter-faith, run as propaganda against the
+  Ascendant Throne and a recruitment funnel for the Coil. A saint in the flock's eyes; a
+  Fang in a saint's robe, harvesting souls for the living god they unknowingly worship.
+  *Crack:* the Collective is a front, and its prophet answers to the very god it serves.
+- **Vesh #2, #5, #6** — *open.* · **Vesh #7** — the newest and least proven; the face
   the crew likely meets first.
 
 ---
@@ -491,6 +499,7 @@ the 69-year Quickening. Older dates are approximate.* 🔓 public · 🔒 hidden
 - **The Stargiver / Iss'reth Aurun** — immortal antagonist; last Keth'aal; the charming
   predator on a leash to the stone.
 - **The First (Vesh #1)** — faceless spymaster-assassin; the Stargiver's right hand.
+- **The Prophet (Vesh #3)** — false messiah of the Aureate Collective; the Coil's voice.
 - **Chain-Lady Mirreth (Vesh #4)** — iron fist of Twin Embers; zealot; Lotus's secret
   shield.
 - **Chain-Lord Lotus Silverblood** — honest public sovereign of the Chain; knows nothing.
