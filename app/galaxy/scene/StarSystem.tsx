@@ -195,23 +195,9 @@ function PulsarBeam({ system }: { system: StarSystemData }) {
     <group ref={beamRef} rotation={[0.18, 0, -0.12]}>
       <SearchlightCone
         direction={1}
-        length={length}
-        radius={2.2}
-        opacity={0.18}
-        map={beamMap}
-      />
-      <SearchlightCone
-        direction={1}
         length={length * 0.88}
         radius={0.72}
         opacity={0.42}
-        map={beamMap}
-      />
-      <SearchlightCone
-        direction={-1}
-        length={length}
-        radius={2.2}
-        opacity={0.13}
         map={beamMap}
       />
       <SearchlightCone
